@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/tests/**/*.js",
     "replay": "node dist/cli/replay.js",
-    "explorer": "node dist/explorer/server.js"
+    "explorer": "node dist/explorer/server.js",
+    "demo": "node dist/cli/demo.js"
   },
   "repository": {
     "type": "git",

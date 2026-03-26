@@ -55,7 +55,9 @@ export async function runTask(
 
     console.log(`\n--- Iteration ${run.iteration} / ${maxRetries} ---`);
 
-    const result = await runClaudeAgent(task, agentDir, { strategy });
+    const result = opts.agentExecuteFn
+      ? await opts.agentExecuteFn(task, opts.workspaceDir)
+      : await runClaudeAgent(task, agentDir, { strategy });
 
     const invariantFailures = runInvariants(result, task);
     if (invariantFailures.length > 0) {
