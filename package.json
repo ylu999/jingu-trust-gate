@@ -9,7 +9,8 @@
     "start": "node dist/cli/run.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/tests/**/*.js",
-    "replay": "node dist/cli/replay.js"
+    "replay": "node dist/cli/replay.js",
+    "explorer": "node dist/explorer/server.js"
   },
   "repository": {
     "type": "git",
