@@ -1,0 +1,32 @@
+{
+  "name": "jingu-harness",
+  "version": "0.1.0",
+  "description": "A governed acceptance layer for LLM-powered systems",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/tests/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ylu999/jingu-harness.git"
+  },
+  "keywords": [
+    "jingu",
+    "llm",
+    "governance",
+    "acceptance-testing"
+  ],
+  "author": "ylu999",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ylu999/jingu-harness/issues"
+  },
+  "homepage": "https://github.com/ylu999/jingu-harness#readme",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  }
+}
