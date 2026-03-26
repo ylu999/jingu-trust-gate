@@ -1,3 +1,4 @@
+import os from "node:os";
 import type { TaskSpec } from "../types.js";
 import type { RunTaskOptions } from "./types.js";
 import { runClaudeAgent } from "../adapter/claude/run.js";
@@ -11,11 +12,13 @@ export async function runTask(
   opts: RunTaskOptions,
 ): Promise<void> {
   const maxRetries = opts.maxRetries ?? task.maxRetries ?? 3;
+  // The agent works inside agentWorkspaceDir; verification runs in workspaceDir.
+  const agentDir = opts.agentWorkspaceDir ?? opts.workspaceDir ?? os.tmpdir();
 
   for (let i = 0; i < maxRetries; i++) {
     console.log(`\n--- Iteration ${i + 1} / ${maxRetries} ---`);
 
-    const result = await runClaudeAgent(task, opts.workspaceDir);
+    const result = await runClaudeAgent(task, agentDir);
 
     try {
       runInvariants(result, task);
