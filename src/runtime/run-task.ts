@@ -4,7 +4,7 @@ import type { RunTaskOptions } from "./types.js";
 import { runClaudeAgent } from "../adapter/claude/run.js";
 import { runVerify } from "../verify/run-verify.js";
 import { runInvariants } from "../invariant/run-invariants.js";
-import { decide } from "../decision/decide.js";
+import { buildFeedback } from "../adapter/feedback.js";
 import { writeEvidence } from "../evidence/write.js";
 
 export async function runTask(
@@ -21,12 +21,11 @@ export async function runTask(
 
     const result = await runClaudeAgent(task, agentDir, { feedback });
 
-    try {
-      runInvariants(result, task);
-    } catch (err) {
-      const failMsg = (err as Error).message;
-      console.error("Invariant failed:", failMsg);
-      feedback = `Invariant check failed: ${failMsg}\n\nFix the issue and try again.`;
+    const invariantFailures = runInvariants(result, task);
+    if (invariantFailures.length > 0) {
+      const failure = invariantFailures[0]!;
+      console.error("Invariant failed:", failure.type);
+      feedback = buildFeedback(failure);
       writeEvidence(
         {
           taskId: task.id,
@@ -36,17 +35,17 @@ export async function runTask(
           decision: "reject",
           changedFiles: result.changedFiles,
           timestamp: Date.now(),
+          failureType: failure.type,
         },
         opts.evidenceDir,
       );
       continue;
     }
 
-    const verify = runVerify(task.verify, opts.workspaceDir);
-    const decision = decide(verify);
+    const vf = runVerify(task.verify, opts.workspaceDir);
 
-    if (!verify.pass) {
-      feedback = `Verify failed (exit ${verify.exitCode}):\n\n${verify.logs}\n\nFix the issue and try again.`;
+    if (vf !== null) {
+      feedback = buildFeedback(vf);
     } else {
       feedback = undefined;
     }
@@ -55,19 +54,20 @@ export async function runTask(
       {
         taskId: task.id,
         iteration: i + 1,
-        verifyPass: verify.pass,
-        verifyExitCode: verify.exitCode,
-        decision,
+        verifyPass: vf === null,
+        verifyExitCode: vf?.exitCode ?? 0,
+        decision: vf === null ? "accept" : "retry",
         changedFiles: result.changedFiles,
         timestamp: Date.now(),
+        failureType: vf?.type,
       },
       opts.evidenceDir,
     );
 
-    console.log(`verify: ${verify.pass ? "PASS" : "FAIL"} (exit ${verify.exitCode})`);
-    console.log(`decision: ${decision}`);
+    console.log(`verify: ${vf === null ? "PASS" : "FAIL"} (exit ${vf?.exitCode ?? 0})`);
+    console.log(`decision: ${vf === null ? "accept" : "retry"}`);
 
-    if (decision === "accept") {
+    if (vf === null) {
       console.log("Task accepted.");
       return;
     }

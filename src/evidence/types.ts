@@ -6,4 +6,5 @@ export type EvidenceEntry = {
   decision: string;
   changedFiles: string[];
   timestamp: number;
+  failureType?: string;
 };

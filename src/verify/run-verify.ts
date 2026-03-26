@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import type { VerifySpec } from "./verify-spec.js";
-import type { VerifyResult } from "../types.js";
+import type { VerifyFailure } from "../failure/types.js";
 
-export function runVerify(spec: VerifySpec, workspaceDir: string): VerifyResult {
+export function runVerify(spec: VerifySpec, workspaceDir: string): VerifyFailure | null {
   switch (spec.type) {
     case "command": {
       const [cmd, ...args] = spec.command.split(" ");
@@ -18,13 +18,15 @@ export function runVerify(spec: VerifySpec, workspaceDir: string): VerifyResult 
         exitCode = err.status ?? 1;
       }
       const pass = exitCode === (spec.pass.exitCode ?? 0);
-      return { pass, logs, exitCode };
+      if (pass) return null;
+      return { type: "VERIFY_FAIL", logs, exitCode };
     }
 
     case "file_exists": {
       const fullPath = path.isAbsolute(spec.path) ? spec.path : path.join(workspaceDir, spec.path);
       const pass = fs.existsSync(fullPath);
-      return { pass, logs: `file_exists: ${spec.path} = ${pass}`, exitCode: pass ? 0 : 1 };
+      if (pass) return null;
+      return { type: "VERIFY_FAIL", logs: `file_exists: ${spec.path} = false`, exitCode: 1 };
     }
 
     case "text_match": {
@@ -32,9 +34,10 @@ export function runVerify(spec: VerifySpec, workspaceDir: string): VerifyResult 
       try {
         const content = fs.readFileSync(fullPath, "utf-8");
         const pass = content.includes(spec.contains);
-        return { pass, logs: `text_match in ${spec.path}: ${pass}`, exitCode: pass ? 0 : 1 };
+        if (pass) return null;
+        return { type: "VERIFY_FAIL", logs: `text_match in ${spec.path}: false`, exitCode: 1 };
       } catch {
-        return { pass: false, logs: `text_match: file not found: ${spec.path}`, exitCode: 1 };
+        return { type: "VERIFY_FAIL", logs: `text_match: file not found: ${spec.path}`, exitCode: 1 };
       }
     }
 
@@ -43,28 +46,29 @@ export function runVerify(spec: VerifySpec, workspaceDir: string): VerifyResult 
       try {
         const data = JSON.parse(fs.readFileSync(fullPath, "utf-8")) as unknown;
         const pass = typeof data === "object" && data !== null;
-        return { pass, logs: `json_schema: ${spec.path} valid=${pass}`, exitCode: pass ? 0 : 1 };
+        if (pass) return null;
+        return { type: "VERIFY_FAIL", logs: `json_schema: ${spec.path} valid=false`, exitCode: 1 };
       } catch (e) {
-        return { pass: false, logs: `json_schema: parse error: ${(e as Error).message}`, exitCode: 1 };
+        return { type: "VERIFY_FAIL", logs: `json_schema: parse error: ${(e as Error).message}`, exitCode: 1 };
       }
     }
 
     case "all": {
       for (const check of spec.checks) {
-        const result = runVerify(check, workspaceDir);
-        if (!result.pass) return result;
+        const failure = runVerify(check, workspaceDir);
+        if (failure !== null) return failure;
       }
-      return { pass: true, logs: "all checks passed", exitCode: 0 };
+      return null;
     }
 
     case "any": {
-      const results: VerifyResult[] = [];
+      const failures: VerifyFailure[] = [];
       for (const check of spec.checks) {
-        const result = runVerify(check, workspaceDir);
-        if (result.pass) return result;
-        results.push(result);
+        const failure = runVerify(check, workspaceDir);
+        if (failure === null) return null;
+        failures.push(failure);
       }
-      return { pass: false, logs: results.map(r => r.logs).join("; "), exitCode: 1 };
+      return { type: "VERIFY_FAIL", logs: failures.map(f => f.logs).join("; "), exitCode: 1 };
     }
 
     default:
