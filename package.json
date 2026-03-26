@@ -6,6 +6,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli/run.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/tests/**/*.js"
   },

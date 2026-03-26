@@ -1,0 +1,11 @@
+{
+  "id": "fix-sum-fn",
+  "goal": "Fix the sum function in src/math.js so it correctly returns a + b",
+  "allowedFiles": ["src/**"],
+  "maxRetries": 3,
+  "verify": {
+    "type": "command",
+    "command": "node tests/task.test.js",
+    "passCondition": { "type": "exit_code", "equals": 0 }
+  }
+}
