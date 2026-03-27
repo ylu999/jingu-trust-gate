@@ -14,11 +14,26 @@
     "type": "git",
     "url": "git+https://github.com/ylu999/jingu-trust-gate.git"
   },
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    }
+  },
   "keywords": [
-    "jingu",
     "llm",
-    "governance",
-    "acceptance-testing"
+    "trust-gate",
+    "admission-control",
+    "hallucination",
+    "rag",
+    "grounding",
+    "policy",
+    "audit"
   ],
   "author": "ylu999",
   "license": "MIT",
