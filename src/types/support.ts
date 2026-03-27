@@ -1,7 +1,7 @@
 export type SupportRef = {
-  id: string;
+  id: string;        // system-internal ID — used in supportIds (audit traceability)
   sourceType: string;
-  sourceId: string;
+  sourceId: string;  // business ID — used in evidenceRefs matching (policy's bindSupport)
   confidence?: number;
   attributes?: Record<string, unknown>;
   retrievedAt?: string; // ISO 8601
