@@ -1,5 +1,3 @@
-// Public API — implemented in later phases
-// Types are re-exported here for consumer convenience
 export type {
   Proposal,
   ProposalKind,
