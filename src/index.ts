@@ -1,0 +1,28 @@
+// Public API — implemented in later phases
+// Types are re-exported here for consumer convenience
+export type {
+  Proposal,
+  ProposalKind,
+  SupportRef,
+  UnitWithSupport,
+  StructureValidationResult,
+  UnitEvaluationResult,
+  ConflictDetectionResult,
+  ConflictAnnotation,
+  GateResultLog,
+  UnitStatus,
+  AdmittedUnit,
+  AdmissionResult,
+  GradeOrdering,
+  HarnessPolicy,
+  RetryFeedback,
+  RetryConfig,
+  RetryContext,
+  LLMInvoker,
+  AuditEntry,
+  AuditWriter,
+  VerifiedBlock,
+  VerifiedContext,
+  RenderContext,
+  HarnessExplanation,
+} from "./types/index.js";
