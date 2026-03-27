@@ -9,5 +9,6 @@ export type SupportRef = {
 
 export type UnitWithSupport<TUnit> = {
   unit: TUnit;
-  supportIds: string[]; // IDs of SupportRef[] used to evaluate this unit
+  supportIds: string[];   // IDs of bound SupportRefs (for audit traceability)
+  supportRefs: SupportRef[]; // full SupportRef objects (for attribute inspection in evaluateUnit)
 };

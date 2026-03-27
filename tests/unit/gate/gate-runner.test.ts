@@ -37,7 +37,7 @@ function makeMockPolicy(opts: {
           ? [{ field: "units", reasonCode: "EMPTY_UNITS" }]
           : [],
     }),
-    bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id) }),
+    bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id), supportRefs: pool }),
     evaluateUnit: ({ unit }) => ({
       kind: "unit",
       unitId: unit.id,
@@ -171,7 +171,7 @@ describe("GateRunner", () => {
     ];
     const mixedPolicy: HarnessPolicy<TestUnit> = {
       validateStructure: () => ({ kind: "structure", valid: true, errors: [] }),
-      bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id) }),
+      bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id), supportRefs: pool }),
       evaluateUnit: ({ unit }) => {
         const decision = decisions[callCount++] ?? "approve";
         return {
@@ -225,7 +225,7 @@ describe("GateRunner", () => {
         valid: false,
         errors: [{ field: "units", reasonCode: "EMPTY_UNITS" }],
       }),
-      bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id) }),
+      bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id), supportRefs: pool }),
       evaluateUnit: ({ unit }) => {
         evaluateCalled++;
         return { kind: "unit", unitId: unit.id, decision: "approve", reasonCode: "OK" };

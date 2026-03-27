@@ -31,7 +31,7 @@ function makeMockPolicy(opts: {
   let callIndex = 0;
   return {
     validateStructure: () => ({ kind: "structure", valid: true, errors: [] }),
-    bindSupport: (unit) => ({ unit, supportIds: [] }),
+    bindSupport: (unit) => ({ unit, supportIds: [], supportRefs: [] }),
     evaluateUnit: ({ unit }) => {
       let decision: "approve" | "downgrade" | "reject";
       if (opts.decisions) {

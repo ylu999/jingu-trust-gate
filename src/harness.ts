@@ -47,9 +47,13 @@ export type Harness<TUnit> = {
   /**
    * Render admitted units → VerifiedContext (input for Claude API).
    * NOT the final user-facing text — pass VerifiedContext to Claude for language generation.
+   *
+   * Pass the same support pool used in admit() so the renderer can access
+   * SupportRef attributes (source URLs, confidence, etc.).
    */
   render(
     result: AdmissionResult<TUnit>,
+    support?: SupportRef[],
     context?: RenderContext
   ): VerifiedContext;
 
@@ -82,12 +86,12 @@ export function createHarness<TUnit>(config: HarnessConfig<TUnit>): Harness<TUni
       return result;
     },
 
-    render(result, context = {}) {
+    render(result, support = [], context = {}) {
       return config.policy.render
-        ? config.policy.render(result.admittedUnits, [], context)
+        ? config.policy.render(result.admittedUnits, support, context)
         : renderer.render(
             result.admittedUnits,
-            [],
+            support,
             context,
             extractContent
           );

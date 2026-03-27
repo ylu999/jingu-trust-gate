@@ -30,11 +30,25 @@ export class GateRunner<TUnit> {
     // Step 1: Structure validation (proposal-level)
     const structureResult = this.policy.validateStructure(proposal);
     if (hasStructureErrors(structureResult.errors)) {
-      // Structure failure = reject entire proposal as empty result
+      // Structure failure = all units are structure-rejected (not silently lost)
+      const structureRejected = proposal.units.map((unit, i) =>
+        buildAdmittedUnit(
+          unit,
+          (unit as Record<string, unknown>)["id"] as string ?? `unit-${i}`,
+          {
+            kind: "unit",
+            unitId: (unit as Record<string, unknown>)["id"] as string ?? `unit-${i}`,
+            decision: "reject",
+            reasonCode: "STRUCTURE_INVALID",
+          },
+          [],
+          []
+        )
+      );
       const auditEntry = buildAuditEntry({
         auditId,
         proposal,
-        allUnits: [],
+        allUnits: structureRejected,
         gateResults: [structureResult],
         unitSupportMap: {},
       });
@@ -42,7 +56,7 @@ export class GateRunner<TUnit> {
       return {
         proposalId: proposal.id,
         admittedUnits: [],
-        rejectedUnits: [],
+        rejectedUnits: structureRejected,
         hasConflicts: false,
         auditId,
       };
@@ -52,6 +66,11 @@ export class GateRunner<TUnit> {
     const unitSupportMap: Record<string, string[]> = {};
     const evaluationResults = proposal.units.map((unit) => {
       const bound = this.policy.bindSupport(unit, supportPool);
+      // Ensure supportRefs is populated even if policy only sets supportIds
+      if (!bound.supportRefs) {
+        (bound as { supportRefs: SupportRef[] }).supportRefs =
+          supportPool.filter((s) => bound.supportIds.includes(s.id));
+      }
       const supportIds = bound.supportIds;
       const evalResult = this.policy.evaluateUnit(bound, proposalContext);
       unitSupportMap[evalResult.unitId] = supportIds;
@@ -65,15 +84,32 @@ export class GateRunner<TUnit> {
     );
 
     // Step 4: Build AdmittedUnit[] for all units
+    // Units involved in a blocking conflict are force-rejected
+    const blockingConflictUnitIds = new Set<string>(
+      conflictAnnotations
+        .filter((a) => a.severity === "blocking")
+        .flatMap((a) => a.unitIds)
+    );
+
     const allAdmittedUnits = evaluationResults.map(
-      ({ unit, evalResult, supportIds }) =>
-        buildAdmittedUnit(
+      ({ unit, evalResult, supportIds }) => {
+        const overriddenResult =
+          blockingConflictUnitIds.has(evalResult.unitId) &&
+          evalResult.decision !== "reject"
+            ? {
+                ...evalResult,
+                decision: "reject" as const,
+                reasonCode: "BLOCKING_CONFLICT",
+              }
+            : evalResult;
+        return buildAdmittedUnit(
           unit,
-          evalResult.unitId,
-          evalResult,
+          overriddenResult.unitId,
+          overriddenResult,
           conflictAnnotations,
           supportIds
-        )
+        );
+      }
     );
 
     const { admitted, rejected } = partitionUnits(allAdmittedUnits);

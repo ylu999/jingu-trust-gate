@@ -44,7 +44,7 @@ function createMockPolicy(opts: {
           ? [{ field: "units", reasonCode: "EMPTY_UNITS" }]
           : [],
     }),
-    bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id) }),
+    bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id), supportRefs: pool }),
     evaluateUnit: ({ unit }) => {
       const decision =
         opts.perUnitDecisions !== undefined
