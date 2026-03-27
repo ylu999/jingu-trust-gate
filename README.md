@@ -201,31 +201,17 @@ Contradictory claims are both admitted with `approved_with_conflict`. The gate n
 
 ## Real-world examples
 
-The `examples/` directory contains eight runnable domain policies. Five cover RAG/data grounding scenarios; three show the gate applied to agent steps, tool calls, and irreversible actions.
+The `examples/` directory contains nine runnable domain policies organized into four use-case categories.
 
-### E-commerce catalog chatbot (`ecommerce-catalog-policy.ts`)
+```
+examples/
+  answers/   — gate what the LLM claims in a response (RAG / Q&A)
+  actions/   — gate what the LLM agent is allowed to do (tools / irreversible actions)
+  state/     — gate what the LLM is allowed to write into persistent state
+  integration/ — audit logging, retry loops, LLM API adapters
+```
 
-Customer asks: "Does this headphone support noise cancellation? How many are left in stock?"
-
-Without jingu-trust-gate: LLM asserts "active noise cancellation" when the spec only lists "passive noise isolation". Invents stock counts. Silently picks one side when two seller listings disagree on availability.
-
-With jingu-trust-gate:
-- Feature not in `evidence.features` → `UNSUPPORTED_FEATURE` → downgraded
-- Exact count outside inventory range → `OVER_SPECIFIC_STOCK` → downgraded
-- Two listings contradict on in-stock status → `STOCK_CONFLICT` (blocking) → both rejected, LLM receives empty context and tells the customer to check the product page
-
-### HPC GPU cluster diagnostics (`hpc-diagnostic-policy.ts`)
-
-SRE agent investigates a failed training job across 8 A100 nodes.
-
-Without jingu-trust-gate: incident report says "GPU permanently damaged, must be replaced" and "all other nodes healthy" — both unsupported by logs. SRE triggers procurement and skips checking other nodes.
-
-With jingu-trust-gate:
-- "Must be replaced" without nvml/dmesg confirmed-loss signal → `UNSUPPORTED_SEVERITY` → downgraded
-- "All other nodes healthy" when pool only covers one node → `UNSUPPORTED_SCOPE` → downgraded
-- Two DCGM readings for the same metric disagree → `TEMPORAL_METRIC_CONFLICT` (informational) → both surfaced
-
-### Medical symptom assessment (`medical-symptom-policy.ts`)
+### Medical symptom assessment (`answers/medical-symptom-policy.ts`)
 
 Health assistant responds to a patient describing fatigue and excessive thirst.
 
@@ -236,7 +222,7 @@ With jingu-trust-gate:
 - Treatment recommendation from symptom evidence → `TREATMENT_NOT_ADVISED` → rejected (hard rule, regardless of evidence count)
 - "Symptoms may be consistent with diabetes" at grade=proven → `OVER_CERTAIN` → downgraded to suspected
 
-### Legal contract analysis (`legal-contract-policy.ts`)
+### Legal contract analysis (`answers/legal-contract-policy.ts`)
 
 Contract review tool answers: "Does this contract have a termination clause?"
 
@@ -247,31 +233,7 @@ With jingu-trust-gate:
 - Specific penalty percentage not in clause figures → `OVER_SPECIFIC_FIGURE` → downgraded
 - Claimed right not explicitly granted by clause → `SCOPE_EXCEEDED` → downgraded
 
-### BI analytics assistant (`bi-analytics-policy.ts`)
-
-Analyst asks: "How much did revenue grow last month?"
-
-Without jingu-trust-gate: LLM says "Revenue grew 15%" when the actual figure from the evidence is 10%. Also asserts "total revenue" when the February record is marked incomplete.
-
-With jingu-trust-gate:
-- Growth percentage computed from evidence does not match claim → `INCORRECT_CALCULATION` → rejected (policy does the math: `(110k−100k)/100k = 10%`)
-- Trend claim ("grew") with only one period in evidence → `MISSING_BASELINE` → downgraded
-- Completeness claim ("total") against incomplete record → `INCOMPLETE_DATA` → downgraded
-- Two ETL pipelines report different revenue for same period → `METRIC_CONFLICT` (blocking) → both rejected, analyst is told to fix the data pipeline first
-
-### Agent step gate (`agent-step-policy.ts`)
-
-Research agent proposes next steps: search, read, synthesize, draft.
-
-Without jingu-trust-gate: agent proceeds to "synthesize findings" before any findings exist in context, and re-searches a topic already retrieved.
-
-With jingu-trust-gate:
-- Required context document not in support pool → `MISSING_CONTEXT` → rejected
-- Synthesis step proposed before finding-type refs exist → `INSUFFICIENT_FINDINGS` → rejected
-- Vague justification ("this would be useful") → `WEAK_JUSTIFICATION` → downgraded
-- Two steps retrieve the same source → `REDUNDANT_STEP` (informational) → both admitted with conflict note
-
-### Tool call gate (`tool-call-policy.ts`)
+### Tool call gate (`actions/tool-call-policy.ts`)
 
 LLM assistant proposes tool calls to answer a user question.
 
@@ -283,7 +245,7 @@ With jingu-trust-gate:
 - Generic justification ("to help the user") → `WEAK_JUSTIFICATION` → downgraded
 - No `expectedValue` declared → `MISSING_EXPECTED_VALUE` → downgraded
 
-### Action gate (`action-gate-policy.ts`)
+### Action gate (`actions/action-gate-policy.ts`)
 
 Email/calendar agent proposes irreversible actions: send email, schedule meeting, delete account.
 
@@ -454,7 +416,7 @@ evaluateUnit(uws) {
 }
 ```
 
-See `examples/tool-call-policy.ts`, `examples/action-gate-policy.ts`, and `examples/agent-step-policy.ts` for complete working implementations of each pattern.
+See `examples/actions/tool-call-policy.ts` and `examples/actions/action-gate-policy.ts` for complete working implementations of each pattern.
 
 ## SupportRef ID clarification
 
@@ -479,15 +441,19 @@ src/helpers/      — approve(), reject(), downgrade(), firstFailing() + structu
 src/trust-gate.ts — createTrustGate() public API
 
 examples/
-  adapter-examples.ts        — Claude, OpenAI, Gemini adapter reference implementations
-  medical-symptom-policy.ts  — health assistant, diagnosis/treatment gate
-  legal-contract-policy.ts   — contract review, term/figure/right grounding
-  hpc-diagnostic-policy.ts   — GPU cluster SRE, severity/scope/metric gate
-  ecommerce-catalog-policy.ts — product chatbot, feature/stock/conflict gate
-  bi-analytics-policy.ts     — BI assistant, value/period/dimension gate
-  agent-step-policy.ts       — research agent step gate, context/findings/redundancy
-  tool-call-policy.ts        — LLM tool call gate, intent/redundancy/justification
-  action-gate-policy.ts      — irreversible action gate, authorization/confirmation/conflict
+  answers/
+    medical-symptom-policy.ts  — health assistant, diagnosis/treatment gate
+    legal-contract-policy.ts   — contract review, term/figure/right grounding
+  actions/
+    tool-call-policy.ts        — LLM tool call gate, intent/redundancy/justification
+    action-gate-policy.ts      — irreversible action gate, authorization/confirmation/conflict
+  state/
+    memory-update-policy.ts    — personal memory write gate, user-statement grounding
+    fact-write-policy.ts       — KB fact write gate, source grounding before storage
+  integration/
+    audit-writer-example.ts    — FileAuditWriter, JSONL audit log (Law 3)
+    downgrade-retry-example.ts — retryOnDecisions=["downgrade"] pattern
+    adapter-examples.ts        — Claude, OpenAI, Gemini adapter reference implementations
 ```
 
 ## Install and run
@@ -498,14 +464,15 @@ npm test     # 85 tests
 npm run demo # narrative demo with 6 scenarios
 
 # Run examples
-node dist/examples/medical-symptom-policy.js
-node dist/examples/legal-contract-policy.js
-node dist/examples/hpc-diagnostic-policy.js
-node dist/examples/ecommerce-catalog-policy.js
-node dist/examples/bi-analytics-policy.js
-node dist/examples/agent-step-policy.js
-node dist/examples/tool-call-policy.js
-node dist/examples/action-gate-policy.js
+node dist/examples/answers/medical-symptom-policy.js
+node dist/examples/answers/legal-contract-policy.js
+node dist/examples/actions/tool-call-policy.js
+node dist/examples/actions/action-gate-policy.js
+node dist/examples/state/memory-update-policy.js
+node dist/examples/state/fact-write-policy.js
+node dist/examples/integration/audit-writer-example.js
+node dist/examples/integration/downgrade-retry-example.js
+node dist/examples/integration/adapter-examples.js
 ```
 
 ## FAQ
@@ -569,6 +536,15 @@ Every `proven` claim fails with `MISSING_EVIDENCE`. `derived` claims also fail. 
 | gate as reasoner | The gate executes policy — it does not reason, interpret, or fill in gaps. If the policy cannot decide, it should downgrade or reject, not guess. |
 
 ## Changelog
+
+### 0.1.11
+- Examples reorganized into four use-case categories: `answers/`, `actions/`, `state/`, `integration/`
+- Removed: `ecommerce-catalog-policy.ts`, `hpc-diagnostic-policy.ts`, `bi-analytics-policy.ts`, `agent-step-policy.ts` (overlapping patterns)
+- New: `state/memory-update-policy.ts` — personal memory write gate (`SOURCE_UNVERIFIED`, `INFERRED_NOT_STATED`, `SCOPE_VIOLATION`)
+- New: `state/fact-write-policy.ts` — KB fact write gate (`UNSOURCED`, `OVER_SPECIFIC`, `LOW_CONFIDENCE_SOURCE`, `CONFLICTING_VALUES`)
+- New: `integration/audit-writer-example.ts` — `FileAuditWriter` usage and JSONL log verification (Law 3)
+- New: `integration/downgrade-retry-example.ts` — `retryOnDecisions: ["downgrade"]` pattern with `RetryFeedback` walkthrough
+- Each subdirectory has a `README.md` with mental model and use-case guide
 
 ### 0.1.10
 - `src/helpers/` module: `approve()`, `reject()`, `downgrade()` outcome builders; `firstFailing()` combinator; `hasSupportType()`, `findSupportByType()` etc. support queries; `emptyProposalErrors()`, `missingIdErrors()`, `missingTextField()` structure helpers; `hintsFeedback()` feedback builder
