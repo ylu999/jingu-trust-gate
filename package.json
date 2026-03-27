@@ -6,12 +6,8 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/cli/run.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/tests/**/*.js",
-    "replay": "node dist/cli/replay.js",
-    "explorer": "node dist/explorer/server.js",
-    "demo": "node dist/cli/demo.js"
+    "test": "npm run build && node --test 'dist/tests/**/*.js'"
   },
   "repository": {
     "type": "git",
