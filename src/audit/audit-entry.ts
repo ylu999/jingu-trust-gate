@@ -19,7 +19,7 @@ export function buildAuditEntry<TUnit>({
   retryAttempts?: number;
 }): AuditEntry {
   const approvedCount = allUnits.filter((u) => u.status === "approved").length;
-  const downgradeCount = allUnits.filter(
+  const downgradedCount = allUnits.filter(
     (u) => u.status === "downgraded"
   ).length;
   const rejectedCount = allUnits.filter((u) => u.status === "rejected").length;
@@ -34,7 +34,7 @@ export function buildAuditEntry<TUnit>({
     proposalKind: proposal.kind,
     totalUnits: proposal.units.length,
     approvedCount,
-    downgradeCount,
+    downgradedCount,
     rejectedCount,
     conflictCount,
     unitSupportMap,

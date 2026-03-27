@@ -8,7 +8,7 @@ export type AuditEntry = {
   proposalKind: ProposalKind;
   totalUnits: number;
   approvedCount: number;
-  downgradeCount: number;
+  downgradedCount: number;
   rejectedCount: number;
   conflictCount: number;
   // unitId → supportIds used during evaluation (for traceability)

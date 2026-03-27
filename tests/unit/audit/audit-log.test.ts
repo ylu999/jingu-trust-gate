@@ -14,7 +14,7 @@ function makeEntry(overrides?: Partial<Record<string, unknown>>) {
     proposalKind: "response",
     totalUnits: 2,
     approvedCount: 1,
-    downgradeCount: 0,
+    downgradedCount: 0,
     rejectedCount: 1,
     conflictCount: 0,
     unitSupportMap: { "u-1": ["s-1"], "u-2": [] },
