@@ -1,8 +1,8 @@
 # jingu-harness
 
-**jingu-harness is a trust boundary for LLM systems.**
+**LLM output is untrusted input. jingu-harness turns it into verified system state.**
 
-It inserts a deterministic, auditable gate between LLM output and your trusted context — so only evidence-backed, scope-safe, conflict-annotated claims reach your users.
+It inserts a deterministic, auditable gate between LLM output and your trusted context. Only claims that are provably supported by evidence are allowed through. Everything else is rejected, downgraded, or annotated — and every decision is written to an audit log.
 
 ## The problem
 
