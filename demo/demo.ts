@@ -101,7 +101,7 @@ function explain(text: string): void {
 /**
  * MemoryPolicy is the INJECTED business logic for this demo.
  *
- * harness core carries ZERO business semantics.
+ * jingu-trust-gate core carries ZERO business semantics.
  * The policy decides what "valid" means for this domain.
  *
  * Gate rules implemented here:
@@ -267,12 +267,12 @@ function createMemoryPolicy(conflicts: ConflictAnnotation[] = []): HarnessPolicy
 // ===========================================================================
 
 function printIronLaws(): void {
-  sep("WHAT IS JINGU-HARNESS?");
+  sep("WHAT IS JINGU-TRUST-GATE?");
   console.log();
-  explain("harness = deterministic admission control for LLM output.");
+  explain("jingu-trust-gate = deterministic admission control for LLM output.");
   console.log();
   explain("It treats LLM output as untrusted input — the same way a web server treats user input.");
-  explain("LLM proposes. harness decides what can be trusted.");
+  explain("LLM proposes. jingu-trust-gate decides what can be trusted.");
   console.log();
   console.log("  THREE IRON LAWS:");
   console.log();
@@ -280,7 +280,7 @@ function printIronLaws(): void {
   explain("All gate evaluation is pure code. No AI judges AI. This guarantees determinism and auditability.");
   console.log();
   console.log("  Law 2 — Policy is injected");
-  explain("harness core carries no business semantics. The caller injects a HarnessPolicy that defines what 'valid' means for their domain.");
+  explain("jingu-trust-gate core carries no business semantics. The caller injects a HarnessPolicy that defines what 'valid' means for their domain.");
   console.log();
   console.log("  Law 3 — Every admission decision is written to audit log");
   explain("Every admit() call writes an AuditEntry. The system is accountable by design, not by convention.");
@@ -314,14 +314,14 @@ function printIronLaws(): void {
   console.log("       v");
   console.log("    Claude / OpenAI / Gemini API call");
   console.log();
-  explain("IMPORTANT: harness does not write 'You have milk in the fridge' for users.");
+  explain("IMPORTANT: jingu-trust-gate does not write 'You have milk in the fridge' for users.");
   explain("It produces search_result blocks / tool messages / content parts that the LLM uses to generate the final response. This is the correct separation of concerns.");
   console.log();
-  console.log("  WHEN TO USE harness:");
+  console.log("  WHEN TO USE jingu-trust-gate:");
   console.log();
   explain("USE when: you have a retrieval system (RAG, vector DB, knowledge base) and LLM output must be grounded in it. Use when you need to prevent hallucinated certainty. Use when you run multi-LLM pipelines. Use when you need audit trails.");
   console.log();
-  explain("DO NOT USE when: your task is purely creative (writing, brainstorming) with no support pool. Do not use when you need sub-100ms latency. Do not use if you expect harness to rewrite or fix LLM output — it labels problems, it does not solve them.");
+  explain("DO NOT USE when: your task is purely creative (writing, brainstorming) with no support pool. Do not use when you need sub-100ms latency. Do not use if you expect jingu-trust-gate to rewrite or fix LLM output — it labels problems, it does not solve them.");
 }
 
 // ===========================================================================
@@ -331,7 +331,7 @@ function printIronLaws(): void {
 async function scenario1(): Promise<void> {
   sep("Scenario 1: Happy Path — Zero Friction");
   console.log();
-  explain("The simplest case. LLM proposes 2 claims, both with evidence. The gate approves both without friction. This is the baseline: when LLM does its job correctly, harness gets out of the way.");
+  explain("The simplest case. LLM proposes 2 claims, both with evidence. The gate approves both without friction. This is the baseline: when LLM does its job correctly, jingu-trust-gate gets out of the way.");
   console.log();
 
   subsep("INPUT — What the LLM proposed");
@@ -505,9 +505,9 @@ async function scenario2(): Promise<void> {
   console.log();
   explain("The claim is not admitted. It will not reach the LLM context. The LLM will not generate a response based on hallucinated certainty.");
   console.log();
-  explain("WHY THIS MATTERS: If this claim were passed through, the LLM would tell the user 'You have exactly 3 apples' with high confidence. The user would act on false information. harness prevents this at the boundary.");
+  explain("WHY THIS MATTERS: If this claim were passed through, the LLM would tell the user 'You have exactly 3 apples' with high confidence. The user would act on false information. jingu-trust-gate prevents this at the boundary.");
   console.log();
-  explain("LIMITATION: harness cannot tell why supportIds is empty. 'LLM cited wrong evidence refs' and 'the evidence simply does not exist in your system' both look identical — MISSING_EVIDENCE. If your support pool has no observations about apples, retry will not fix this. Build your retrieval system first, then use harness to enforce that claims stay within what was retrieved.");
+  explain("LIMITATION: jingu-trust-gate cannot tell why supportIds is empty. 'LLM cited wrong evidence refs' and 'the evidence simply does not exist in your system' both look identical — MISSING_EVIDENCE. If your support pool has no observations about apples, retry will not fix this. Build your retrieval system first, then use jingu-trust-gate to enforce that claims stay within what was retrieved.");
 
   assert.equal(result.admittedUnits.length, 0);
   assert.equal(result.rejectedUnits.length, 1);
@@ -530,9 +530,9 @@ async function scenario3(): Promise<void> {
   console.log();
   explain("ANTI-PATTERN: LLM says 'Coca-Cola' but the evidence only says 'a drink' (no brand attribute). The claim is more specific than what the evidence supports.");
   console.log();
-  explain("harness response: downgrade grade from proven to derived, mark unsupportedAttributes=[\"brand\"]. The claim IS admitted — but with reduced confidence and a caveat.");
+  explain("jingu-trust-gate response: downgrade grade from proven to derived, mark unsupportedAttributes=[\"brand\"]. The claim IS admitted — but with reduced confidence and a caveat.");
   console.log();
-  explain("IMPORTANT: harness does NOT rewrite 'Coca-Cola' to 'drink'. It is not an editor. It marks the precision boundary and lets the downstream LLM decide how to communicate it.");
+  explain("IMPORTANT: jingu-trust-gate does NOT rewrite 'Coca-Cola' to 'drink'. It is not an editor. It marks the precision boundary and lets the downstream LLM decide how to communicate it.");
 
   subsep("INPUT — What the LLM proposed");
   console.log();
@@ -610,7 +610,7 @@ async function scenario3(): Promise<void> {
   console.log();
   explain("The downstream LLM receives this block. It sees 'Coca-Cola' as the content, but grade=derived and unsupportedAttributes=[\"brand\"] as caveats. The LLM can decide to say 'there appears to be a soft drink' rather than asserting the brand.");
   console.log();
-  explain("This is precision calibration: harness tells the LLM exactly where its confidence boundary is.");
+  explain("This is precision calibration: jingu-trust-gate tells the LLM exactly where its confidence boundary is.");
 
   assert.equal(result.admittedUnits.length, 1);
   assert.equal(admitted.status, "downgraded");
@@ -637,9 +637,9 @@ async function scenario4(): Promise<void> {
   console.log();
   explain("Two contradictory claims: 'You have milk' (obs-1, Jan 1) and 'You have no milk' (obs-2, Jan 2). Both have evidence. Both pass individual evaluation.");
   console.log();
-  explain("ANTI-PATTERN harness prevents: silently picking one claim as 'winner'. That would hide information from the LLM and produce incorrect responses.");
+  explain("ANTI-PATTERN jingu-trust-gate prevents: silently picking one claim as 'winner'. That would hide information from the LLM and produce incorrect responses.");
   console.log();
-  explain("harness response: BOTH claims are admitted with status=approved_with_conflict. The conflict is annotated. The downstream LLM receives both facts and can surface the contradiction to the user.");
+  explain("jingu-trust-gate response: BOTH claims are admitted with status=approved_with_conflict. The conflict is annotated. The downstream LLM receives both facts and can surface the contradiction to the user.");
 
   subsep("INPUT — What the LLM proposed");
   console.log();
@@ -817,7 +817,7 @@ async function scenario4(): Promise<void> {
   console.log();
   explain("admittedBlocks is empty. The downstream LLM receives no claims — only the instructions field. It can tell the user: 'Stock status is inconsistent across records. Please check the product page directly.' It does not guess.");
   console.log();
-  explain("LIMITATION: harness cannot resolve the conflict. It surfaces the problem and stops. A human or a dedicated reconciliation step must decide which record is authoritative.");
+  explain("LIMITATION: jingu-trust-gate cannot resolve the conflict. It surfaces the problem and stops. A human or a dedicated reconciliation step must decide which record is authoritative.");
 
   assert.equal(resultBlocking.admittedUnits.length, 0);
   assert.equal(resultBlocking.rejectedUnits.length, 2);
@@ -844,9 +844,9 @@ async function scenario5(): Promise<void> {
   console.log();
   explain("ANTI-PATTERN: LLM provides a 'proven' claim with no evidence. When told to retry, LLM just softens the language to 'derived' — without supplying evidence. This is wrong.");
   console.log();
-  explain("harness response: RetryFeedback is a TYPED STRUCT, not a string. It carries unitId, reasonCode, and structured details. The fix the LLM must make is explicit: supply evidence. Softening language is not the fix.");
+  explain("jingu-trust-gate response: RetryFeedback is a TYPED STRUCT, not a string. It carries unitId, reasonCode, and structured details. The fix the LLM must make is explicit: supply evidence. Softening language is not the fix.");
   console.log();
-  explain("The LLMInvoker is responsible for serializing RetryFeedback as tool_result + is_error:true for Claude's built-in retry understanding. harness controls WHETHER to retry. Invoker controls HOW.");
+  explain("The LLMInvoker is responsible for serializing RetryFeedback as tool_result + is_error:true for Claude's built-in retry understanding. jingu-trust-gate controls WHETHER to retry. Invoker controls HOW.");
 
   subsep("RETRY FEEDBACK TYPE (load-bearing contract)");
   console.log();
@@ -866,7 +866,7 @@ async function scenario5(): Promise<void> {
   console.log("  Attempt 1 (LLM invocation 1):");
   console.log('    claim: "You have 5 cans of soup"  grade=proven  evidenceRefs=[]');
   console.log("    → gate verdict: MISSING_EVIDENCE → reject");
-  console.log("    → harness builds RetryFeedback");
+  console.log("    → jingu-trust-gate builds RetryFeedback");
   console.log("    → sends to LLMInvoker");
   console.log();
   console.log("  Attempt 2 (LLM invocation 2):");
@@ -951,7 +951,7 @@ async function scenario5(): Promise<void> {
   console.log();
   explain("KEY POINT: The fix was supplying evidence, not softening language. If the LLM had just changed grade from 'proven' to 'derived' without supplying evidence, the retry would have failed again (MISSING_EVIDENCE only triggers on grade=proven, so that softening would have passed — but with wrong semantics). The correct fix is always: ground the claim.");
   console.log();
-  explain("LIMITATION: retry is locally effective, not globally convergent. It works when the LLM cited wrong evidence refs. It does NOT work when the support pool itself is missing the data — harness cannot distinguish between these two cases. The support pool is fixed for the entire retry loop. If the evidence was never retrieved, no number of retries will fix it.");
+  explain("LIMITATION: retry is locally effective, not globally convergent. It works when the LLM cited wrong evidence refs. It does NOT work when the support pool itself is missing the data — jingu-trust-gate cannot distinguish between these two cases. The support pool is fixed for the entire retry loop. If the evidence was never retrieved, no number of retries will fix it.");
 
   assert.equal(result.retryAttempts, 2);
   assert.equal(result.admittedUnits.length, 1);
@@ -974,9 +974,9 @@ async function scenario5(): Promise<void> {
 async function scenario6(): Promise<void> {
   sep("Scenario 6: All Three Adapters — One VerifiedContext, Three Wire Formats");
   console.log();
-  explain("The SAME VerifiedContext is fed to all three adapters. Each adapter produces the wire format its target LLM API expects. harness is LLM-agnostic by design.");
+  explain("The SAME VerifiedContext is fed to all three adapters. Each adapter produces the wire format its target LLM API expects. jingu-trust-gate is LLM-agnostic by design.");
   console.log();
-  explain("This is the correct separation of concerns: harness produces semantic structure, adapters translate it. You can swap target LLMs without changing your admission logic.");
+  explain("This is the correct separation of concerns: jingu-trust-gate produces semantic structure, adapters translate it. You can swap target LLMs without changing your admission logic.");
 
   // Use the same VerifiedContext for all adapters
   const verifiedCtx: VerifiedContext = {
@@ -1011,7 +1011,7 @@ async function scenario6(): Promise<void> {
   // --- Claude Adapter ---
   subsep("ADAPTER 1 — ClaudeContextAdapter → search_result blocks");
   console.log();
-  explain("Claude API supports native search_result blocks with citations. harness maps each VerifiedBlock to one search_result block. Claude can cite specific blocks in its response.");
+  explain("Claude API supports native search_result blocks with citations. jingu-trust-gate maps each VerifiedBlock to one search_result block. Claude can cite specific blocks in its response.");
   console.log();
 
   const claudeAdapter = new ClaudeContextAdapter({ citations: true });
@@ -1131,7 +1131,7 @@ async function scenario6(): Promise<void> {
   console.log("  OpenAI    | ChatMessage (role=tool)     | tool result in tool loop");
   console.log("  Gemini    | Content { role, parts[] }   | user turn in contents[]");
   console.log();
-  explain("Same VerifiedContext. Same semantic content. Four different wire formats. harness is adapter-agnostic. Add a new adapter for any LLM API without changing the gate or policy.");
+  explain("Same VerifiedContext. Same semantic content. Four different wire formats. jingu-trust-gate is adapter-agnostic. Add a new adapter for any LLM API without changing the gate or policy.");
 }
 
 // ===========================================================================
@@ -1141,7 +1141,7 @@ async function scenario6(): Promise<void> {
 function printPatternsAndAntiPatterns(): void {
   sep("PATTERNS AND ANTI-PATTERNS");
   console.log();
-  console.log("  PATTERNS (what harness enables):");
+  console.log("  PATTERNS (what jingu-trust-gate enables):");
   console.log();
   console.log("  Pattern 1: Evidence-backed admission");
   explain("Only proven claims with evidence refs pass. Grade=proven with no evidence is deterministically rejected. Calibrates confidence to what the system actually knows.");
@@ -1150,7 +1150,7 @@ function printPatternsAndAntiPatterns(): void {
   explain("Over-specific claims are downgraded, not rejected. The claim is admitted with reduced grade and unsupportedAttributes marked. The downstream LLM adjusts its language accordingly.");
   console.log();
   console.log("  Pattern 3: Conflict surfacing");
-  explain("Contradictions between claims are annotated and passed through (informational) or blocked (blocking). harness never silently picks a winner. LLM receives all facts and can surface the contradiction to the user.");
+  explain("Contradictions between claims are annotated and passed through (informational) or blocked (blocking). jingu-trust-gate never silently picks a winner. LLM receives all facts and can surface the contradiction to the user.");
   console.log();
   console.log("  Pattern 4: Structured retry");
   explain("RetryFeedback is a typed struct with unitId, reasonCode, and details. The invoker serializes it as tool_result + is_error:true for Claude's built-in retry. The LLM understands exactly what to fix.");
@@ -1158,7 +1158,7 @@ function printPatternsAndAntiPatterns(): void {
   console.log("  Pattern 5: LLM-agnostic output");
   explain("VerifiedContext is an abstract semantic structure. Adapters translate it to wire format. Swap Claude for OpenAI without changing your gate or policy.");
   console.log();
-  console.log("  ANTI-PATTERNS (what harness prevents):");
+  console.log("  ANTI-PATTERNS (what jingu-trust-gate prevents):");
   console.log();
   console.log("  Anti-pattern 1: Hallucinated certainty");
   explain("grade=proven with no evidence reference. The LLM stated something as fact with no backing. Gate rejects with MISSING_EVIDENCE. Prevented: LLM telling user false facts with high confidence.");
@@ -1167,7 +1167,7 @@ function printPatternsAndAntiPatterns(): void {
   explain("Brand assertion ('Coca-Cola') without brand evidence. Claim is more specific than what the evidence supports. Gate downgrades with OVER_SPECIFIC_BRAND. unsupportedAttributes marked.");
   console.log();
   console.log("  Anti-pattern 3: Silent conflict resolution");
-  explain("Picking one of two contradictory claims as the 'true' one. harness rejects this by design. Both claims are admitted with conflict annotations. Information is never silently discarded.");
+  explain("Picking one of two contradictory claims as the 'true' one. jingu-trust-gate rejects this by design. Both claims are admitted with conflict annotations. Information is never silently discarded.");
   console.log();
   console.log("  Anti-pattern 4: String-based retry");
   explain("Passing raw error string to LLM as retry feedback. Loses structure, loses traceability, LLM cannot extract specific unit IDs or reason codes. RetryFeedback is always a typed struct.");
@@ -1177,17 +1177,17 @@ function printPatternsAndAntiPatterns(): void {
   console.log();
   console.log("  KNOWN LIMITATIONS:");
   console.log();
-  console.log("  Limitation 1: harness is a judge, not an editor");
+  console.log("  Limitation 1: jingu-trust-gate is a judge, not an editor");
   explain("It flags problems and annotates precision boundaries. It does not rewrite claims, fill in missing evidence, or auto-resolve conflicts. Downstream LLM receives the annotations and decides how to express them.");
   console.log();
   console.log("  Limitation 2: support pool is fixed per admission");
-  explain("Retry works when the LLM cited wrong evidence refs. It does not work when the evidence simply does not exist in your system. harness cannot distinguish between these two cases — MISSING_EVIDENCE looks identical in both.");
+  explain("Retry works when the LLM cited wrong evidence refs. It does not work when the evidence simply does not exist in your system. jingu-trust-gate cannot distinguish between these two cases — MISSING_EVIDENCE looks identical in both.");
   console.log();
   console.log("  Limitation 3: no cross-session state");
-  explain("harness is stateless per call. It does not remember previous admissions or detect patterns across sessions. Cross-session governance must be implemented outside harness.");
+  explain("jingu-trust-gate is stateless per call. It does not remember previous admissions or detect patterns across sessions. Cross-session governance must be implemented outside harness.");
   console.log();
   console.log("  Limitation 4: no domain constraint on TUnit");
-  explain("harness does not enforce that TUnit has an id field. If your policy's evaluateUnit returns a mismatched unitId, the audit log will have orphan entries. Your policy is responsible for ID consistency.");
+  explain("jingu-trust-gate does not enforce that TUnit has an id field. If your policy's evaluateUnit returns a mismatched unitId, the audit log will have orphan entries. Your policy is responsible for ID consistency.");
 }
 
 // ===========================================================================
@@ -1227,9 +1227,9 @@ async function main(): Promise<void> {
   console.log("    — Any domain requiring audit trails and explainable admission decisions");
   console.log();
   console.log("  Not for:");
-  console.log("    — Pure creative tasks (no support pool = harness has nothing to verify against)");
+  console.log("    — Pure creative tasks (no support pool = jingu-trust-gate has nothing to verify against)");
   console.log("    — Sub-100ms latency requirements");
-  console.log("    — Systems that expect harness to rewrite or auto-fix LLM output");
+  console.log("    — Systems that expect jingu-trust-gate to rewrite or auto-fix LLM output");
   console.log();
 }
 
