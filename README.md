@@ -1,41 +1,116 @@
 # jingu-harness
 
-**jingu-harness is a deterministic admission control layer for LLM-generated content.**
+LLMs make confident claims. Some are hallucinated. jingu-harness is a deterministic gate that only lets evidence-backed claims through to your LLM context — before your LLM generates a response.
 
-LLMs produce confident outputs that may be unsupported by evidence. Standard RAG pipelines trust this output directly. jingu-harness enforces that only evidence-backed, scope-safe, and conflict-annotated content enters your trusted context.
+## The mental model
 
-## Pipeline
+Think of it like a fact-checker that sits between your retrieval system and your LLM. The LLM proposes claims. The gate decides which claims are trustworthy enough to use.
+
+Two roles, cleanly separated:
+
+- **LLM** = proposer (untrusted) — generates candidate claims referencing your evidence
+- **harness** = judge (deterministic, zero LLM) — checks each claim against the evidence pool
+
+harness does NOT generate or rewrite content. It is a judge, not an editor.
+
+## The pipeline
 
 ```
-LLM output (Proposal)
+Your retrieval system
         ↓
-  Gate Engine          ← 4 steps, zero LLM, pure code
-  1. validateStructure
-  2. bindSupport
-  3. evaluateUnit
-  4. detectConflicts
+  support pool         ← the evidence you have (documents, observations, DB records)
         ↓
-  AdmissionResult      ← approved / downgraded / rejected / approved_with_conflict
+  LLM call             ← LLM proposes claims referencing that evidence
         ↓
-  harness.render()
+  Proposal<TUnit>      ← typed output from LLM (schema-enforced by output_config.format)
         ↓
-  VerifiedContext       ← semantic structure, not user text
+  harness.admit()      ← the gate — pure code, zero LLM
+    Step 1: validateStructure()   is the proposal well-formed? (required fields, non-empty, etc.)
+    Step 2: bindSupport()         which evidence from the pool applies to each claim?
+    Step 3: evaluateUnit()        does each claim stay within what the evidence actually supports?
+    Step 4: detectConflicts()     do any claims contradict each other?
         ↓
-  Adapter              ← ClaudeAdapter / OpenAIAdapter / GeminiAdapter
+  AdmissionResult      ← every claim is now labeled: approved / downgraded / rejected / approved_with_conflict
         ↓
-  LLM API call         ← Claude / OpenAI / Gemini generates final response
+  harness.render()     ← policy renders admitted claims into structured context
+        ↓
+  VerifiedContext       ← structured context input (not user-facing text)
+        ↓
+  Adapter.adapt()      ← converts to wire format for your target LLM
+        ↓
+  LLM API call         ← LLM generates the final user-facing response
 ```
 
-## Claude API boundary
+## Unit status — what each outcome means
 
-| Layer | Guarantees |
-|-------|-----------|
-| Claude `output_config.format + strict:true` | **Syntactic** correctness — schema-valid output |
-| jingu-harness | **Semantic** correctness — evidence-grounded, scope-safe, conflict-annotated |
+| Status | What it means | What harness does |
+|--------|--------------|-------------------|
+| `approved` | Claim has evidence, nothing over-asserted | Passes through as-is |
+| `downgraded` | Claim is more specific than evidence supports | Admitted with reduced grade + `unsupportedAttributes` flagged |
+| `rejected` | No evidence, or structure invalid | Blocked — never reaches LLM context |
+| `approved_with_conflict` | Claim has evidence but contradicts another claim | Admitted with conflict annotation |
 
-- `harness.render()` outputs `VerifiedContext` — this is input to the Claude API, **not** final user text
-- Claude does the language generation; harness controls what Claude is allowed to say
-- `RetryFeedback` flows back as `tool_result + is_error:true` using Claude's built-in retry mechanism
+## Three iron laws
+
+1. **Gate Engine: zero LLM calls** — all four steps are deterministic code, not prompts. The gate is auditable and reproducible. No AI judging AI.
+
+2. **Policy is injected** — harness core contains zero business logic. Your domain rules live entirely in `HarnessPolicy`. The same harness instance works for product search, medical records, or financial data — the policy changes, the gate does not.
+
+3. **Every admission decision is written to audit log** — append-only JSONL at `.jingu-harness/audit.jsonl`. Every claim's fate is on record, linkable by `auditId`.
+
+## When to use / when NOT to use
+
+**Use harness when:**
+- You have a retrieval system (RAG, vector DB, knowledge base) and LLM output must be grounded in it
+- You need to prevent hallucinated certainty from reaching users
+- You run multi-LLM pipelines and need a trusted handoff point between models
+- You need audit trails for compliance or debugging
+- You want to swap between Claude / OpenAI / Gemini without rewriting your admission logic
+
+**Do NOT use harness when:**
+- Your task is purely creative (writing, brainstorming) — no support pool exists, grounding doesn't apply
+- You need sub-100ms latency and cannot afford a synchronous gate step
+- You expect harness to rewrite or fix LLM output — it labels problems, it does not solve them
+- You have no concept of "evidence" in your domain — harness becomes pointless overhead
+
+## Patterns and anti-patterns
+
+### Patterns (what harness enables)
+
+**Pattern 1: Evidence-backed admission**
+Only claims with bound evidence refs pass. Claims with `grade=proven` and zero evidence are rejected with `MISSING_EVIDENCE`. The gate calibrates confidence to what the system actually knows.
+
+**Pattern 2: Precision calibration**
+Over-specific claims (asserting a brand or quantity beyond what the evidence states) are downgraded, not rejected. The claim is admitted with a reduced grade and `unsupportedAttributes` marked. The downstream LLM adjusts its language accordingly.
+
+**Pattern 3: Conflict surfacing**
+Contradictory claims are both admitted with `approved_with_conflict`. harness never silently picks a winner. The downstream LLM receives both facts and can surface the contradiction to the user.
+
+**Pattern 4: Structured retry**
+`RetryFeedback` is a typed struct (`unitId + reasonCode + details`), not a raw string. The LLM knows exactly which claim to fix and why. Serialize it as `tool_result + is_error: true` for Claude's built-in retry mechanism.
+
+**Pattern 5: LLM-agnostic context**
+`VerifiedContext` is abstract. Adapters translate it to each LLM's wire format. Swap Claude for OpenAI without touching your gate or policy.
+
+### Anti-patterns (what harness prevents)
+
+**Anti-pattern 1: Hallucinated certainty** — `grade=proven` with zero bound evidence → `MISSING_EVIDENCE` → rejected before it reaches any LLM.
+
+**Anti-pattern 2: Specificity hallucination** — claiming a brand name or specific quantity that the evidence does not mention → `OVER_SPECIFIC_BRAND` → downgraded with `unsupportedAttributes` flagged.
+
+**Anti-pattern 3: Silent conflict resolution** — picking one of two contradictory claims without surfacing it → harness annotates both as `approved_with_conflict` so the downstream model handles it explicitly.
+
+**Anti-pattern 4: String-based retry** — passing a raw error string back to the LLM loses structure. Always use typed `RetryFeedback` so the LLM knows which unit to fix.
+
+**Anti-pattern 5: Bypassing the gate** — never pass raw LLM output directly as trusted context. All LLM proposals must go through `harness.admit()`.
+
+## Known limitations
+
+- **harness is a judge, not an editor.** It flags problems and annotates boundaries. It does not rewrite claims, fill in missing evidence, or auto-resolve conflicts.
+- **Support pool is fixed per admission.** If your retrieval missed the relevant evidence, retry will not help — harness cannot distinguish "LLM cited wrong evidence" from "evidence does not exist in your system."
+- **No cross-session state.** harness is stateless per call. It does not remember previous admissions or detect patterns across sessions.
+- **Performance is O(units × support_pool) per admission.** For large-scale use, optimize `bindSupport` in your policy (e.g., index by `sourceId` before the call).
+- **`TUnit` has no id constraint.** harness does not enforce that your unit type has an `id` field — that is your policy's responsibility.
 
 ## Quick start
 
@@ -45,6 +120,7 @@ import type { HarnessPolicy } from "jingu-harness";
 
 type Item = { id: string; text: string; grade: "proven" | "derived" };
 
+// Policy = your domain rules. harness core has none.
 const policy: HarnessPolicy<Item> = {
   validateStructure: (proposal) => ({
     kind: "structure",
@@ -53,17 +129,23 @@ const policy: HarnessPolicy<Item> = {
       ? [{ field: "units", reasonCode: "EMPTY_PROPOSAL" }]
       : [],
   }),
+
   bindSupport: (unit, pool) => {
     const matched = pool.filter(s => s.sourceId === unit.id);
+    // supportIds: for audit traceability; supportRefs: for attribute inspection in evaluateUnit
     return { unit, supportIds: matched.map(s => s.id), supportRefs: matched };
   },
+
   evaluateUnit: ({ unit, supportIds }) => ({
     kind: "unit",
     unitId: unit.id,
     decision: unit.grade === "proven" && supportIds.length === 0 ? "reject" : "approve",
     reasonCode: unit.grade === "proven" && supportIds.length === 0 ? "MISSING_EVIDENCE" : "OK",
   }),
-  detectConflicts: () => [],
+
+  // detectConflicts receives UnitWithSupport[] so you can inspect bound evidence per unit
+  detectConflicts: (_units, _pool) => [],
+
   render: (admittedUnits, _support, _ctx) => ({
     admittedBlocks: admittedUnits.map(u => ({
       sourceId: u.unitId,
@@ -72,6 +154,7 @@ const policy: HarnessPolicy<Item> = {
     })),
     summary: { admitted: admittedUnits.length, rejected: 0, conflicts: 0 },
   }),
+
   buildRetryFeedback: (results, _ctx) => ({
     summary: `${results.length} unit(s) failed`,
     errors: results.map(r => ({ unitId: r.unitId, reasonCode: r.reasonCode })),
@@ -81,7 +164,7 @@ const policy: HarnessPolicy<Item> = {
 const harness = createHarness({ policy });
 
 const result  = await harness.admit(proposal, supportPool);
-const context = harness.render(result);             // VerifiedContext → pass to Claude API
+const context = harness.render(result);             // VerifiedContext → pass to LLM API
 const summary = harness.explain(result);            // { approved, rejected, conflicts, ... }
 
 // Convert to Claude API wire format
@@ -92,18 +175,31 @@ const blocks  = new ClaudeContextAdapter().adapt(context);
 
 Implement all six methods. None may call an LLM.
 
-| Method | Input | Output | Zero LLM? |
-|--------|-------|--------|-----------|
-| `validateStructure` | `Proposal<TUnit>` | `StructureValidationResult` | yes |
-| `bindSupport` | `unit + SupportRef[]` | `UnitWithSupport<TUnit>` | yes |
-| `evaluateUnit` | `UnitWithSupport<TUnit>` | `UnitEvaluationResult` | yes |
-| `detectConflicts` | `UnitWithSupport<TUnit>[] + SupportRef[]` | `ConflictAnnotation[]` | yes |
-| `render` | `AdmittedUnit<TUnit>[] + SupportRef[]` | `VerifiedContext` | yes |
-| `buildRetryFeedback` | `UnitEvaluationResult[]` | `RetryFeedback` | yes |
+| Method | What it does |
+|--------|-------------|
+| `validateStructure` | Is the proposal well-formed? (right number of units, required fields present) |
+| `bindSupport` | Which evidence from the pool applies to this claim? Returns the claim + its evidence. |
+| `evaluateUnit` | Should this claim be approved, downgraded, or rejected based on its evidence? |
+| `detectConflicts` | Do any claims contradict each other? Receives all claims with their bound evidence. |
+| `render` | Serialize admitted claims into `VerifiedContext` for the adapter. |
+| `buildRetryFeedback` | When gate rejects, what structured feedback should the LLM receive? |
+
+Full signatures:
+
+```ts
+interface HarnessPolicy<TUnit> {
+  validateStructure(proposal: Proposal<TUnit>): StructureValidationResult;
+  bindSupport(unit: TUnit, supportPool: SupportRef[]): UnitWithSupport<TUnit>;
+  evaluateUnit(unitWithSupport: UnitWithSupport<TUnit>, context: { proposalId: string; proposalKind: string }): UnitEvaluationResult;
+  detectConflicts(units: UnitWithSupport<TUnit>[], supportPool: SupportRef[]): ConflictAnnotation[];
+  render(admittedUnits: AdmittedUnit<TUnit>[], supportPool: SupportRef[], context: RenderContext): VerifiedContext;
+  buildRetryFeedback(unitResults: UnitEvaluationResult[], context: RetryContext): RetryFeedback;
+}
+```
 
 ## Adapters
 
-Each adapter converts `VerifiedContext` to the wire format expected by a specific LLM API.
+Each adapter converts `VerifiedContext` to the wire format expected by a specific LLM API. Grade caveats, unsupported attributes, and conflict notes are inlined into content so the downstream model sees them as contextual constraints.
 
 ```ts
 // Claude API — search_result blocks with optional citations
@@ -119,23 +215,14 @@ const content = new GeminiContextAdapter({ role: "user" }).adapt(verifiedCtx);
 // content: GeminiContent  (role: "user" | "function", parts: GeminiTextPart[])
 ```
 
-All three adapters inline grade caveats, unsupported attributes, and conflict notes into the
-content text so the downstream model sees them as contextual constraints.
+## SupportRef ID clarification
 
-## UnitStatus
+`SupportRef` has two IDs that serve different purposes:
 
-| Status | Meaning |
-|--------|---------|
-| `approved` | Claim backed by evidence, passes all gates |
-| `downgraded` | Admitted but with reduced grade (e.g. `proven` → `derived`) |
-| `rejected` | Not admitted — missing evidence or structure invalid |
-| `approved_with_conflict` | Admitted but conflicts with another unit |
+- `id` — system-internal, written to `supportIds` in audit entries for traceability back to the exact record
+- `sourceId` — business identity, used in `bindSupport` to match claims against the evidence pool
 
-## Three iron laws
-
-1. **Gate Engine: zero LLM calls** — all gates are code, not prompts; deterministic and auditable
-2. **Policy is injected** — harness core carries no business semantics; all domain logic lives in `HarnessPolicy`
-3. **Every admission decision is written to audit log** — append-only JSONL at `.jingu-harness/audit.jsonl`
+When writing `bindSupport`, match on `sourceId` (business key). The `id` fields flow automatically into the audit log.
 
 ## Module structure
 
