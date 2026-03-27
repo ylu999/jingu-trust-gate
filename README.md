@@ -276,3 +276,7 @@ npm install
 npm test     # 72 tests
 npm run demo # narrative demo with 6 scenarios
 ```
+
+## License
+
+MIT
