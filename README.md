@@ -188,7 +188,7 @@ Contradictory claims are both admitted with `approved_with_conflict`. The gate n
 
 ## Real-world examples
 
-The `examples/` directory contains five runnable domain policies. Each one shows how to write a `GatePolicy` for a real scenario and what the gate catches that a plain RAG pipeline would not.
+The `examples/` directory contains eight runnable domain policies. Five cover RAG/data grounding scenarios; three show the gate applied to agent steps, tool calls, and irreversible actions.
 
 ### E-commerce catalog chatbot (`ecommerce-catalog-policy.ts`)
 
@@ -245,6 +245,42 @@ With jingu-trust-gate:
 - Trend claim ("grew") with only one period in evidence → `MISSING_BASELINE` → downgraded
 - Completeness claim ("total") against incomplete record → `INCOMPLETE_DATA` → downgraded
 - Two ETL pipelines report different revenue for same period → `METRIC_CONFLICT` (blocking) → both rejected, analyst is told to fix the data pipeline first
+
+### Agent step gate (`agent-step-policy.ts`)
+
+Research agent proposes next steps: search, read, synthesize, draft.
+
+Without jingu-trust-gate: agent proceeds to "synthesize findings" before any findings exist in context, and re-searches a topic already retrieved.
+
+With jingu-trust-gate:
+- Required context document not in support pool → `MISSING_CONTEXT` → rejected
+- Synthesis step proposed before finding-type refs exist → `INSUFFICIENT_FINDINGS` → rejected
+- Vague justification ("this would be useful") → `WEAK_JUSTIFICATION` → downgraded
+- Two steps retrieve the same source → `REDUNDANT_STEP` (informational) → both admitted with conflict note
+
+### Tool call gate (`tool-call-policy.ts`)
+
+LLM assistant proposes tool calls to answer a user question.
+
+Without jingu-trust-gate: assistant calls `fetch_user_profile` when the result already exists in the conversation context, and calls `search_docs` with no connection to what the user asked.
+
+With jingu-trust-gate:
+- `prior_result` for the same tool already in pool → `REDUNDANT_CALL` → rejected
+- `grade=necessary` but no user message establishes intent → `INTENT_NOT_ESTABLISHED` → rejected
+- Generic justification ("to help the user") → `WEAK_JUSTIFICATION` → downgraded
+- No `expectedValue` declared → `MISSING_EXPECTED_VALUE` → downgraded
+
+### Action gate (`action-gate-policy.ts`)
+
+Email/calendar agent proposes irreversible actions: send email, schedule meeting, delete account.
+
+Without jingu-trust-gate: agent sends an email the user never explicitly asked for, and deletes an account without confirmation.
+
+With jingu-trust-gate:
+- High-risk irreversible action with no `user_confirmation` ref → `CONFIRM_REQUIRED` → rejected
+- Action scope exceeds what the user's message authorized → `SCOPE_EXCEEDED` → rejected
+- No authorization reference for destructive action → `DESTRUCTIVE_WITHOUT_AUTHORIZATION` → rejected
+- Two actions directly contradict each other → `CONTRADICTORY_ACTIONS` (blocking) → both rejected, LLM told to surface the contradiction to the user
 
 ## Known limitations
 
@@ -428,6 +464,9 @@ examples/
   hpc-diagnostic-policy.ts   — GPU cluster SRE, severity/scope/metric gate
   ecommerce-catalog-policy.ts — product chatbot, feature/stock/conflict gate
   bi-analytics-policy.ts     — BI assistant, value/period/dimension gate
+  agent-step-policy.ts       — research agent step gate, context/findings/redundancy
+  tool-call-policy.ts        — LLM tool call gate, intent/redundancy/justification
+  action-gate-policy.ts      — irreversible action gate, authorization/confirmation/conflict
 ```
 
 ## Install and run
@@ -443,6 +482,9 @@ node dist/examples/legal-contract-policy.js
 node dist/examples/hpc-diagnostic-policy.js
 node dist/examples/ecommerce-catalog-policy.js
 node dist/examples/bi-analytics-policy.js
+node dist/examples/agent-step-policy.js
+node dist/examples/tool-call-policy.js
+node dist/examples/action-gate-policy.js
 ```
 
 ## FAQ
@@ -506,6 +548,14 @@ Every `proven` claim fails with `MISSING_EVIDENCE`. `derived` claims also fail. 
 | gate as reasoner | The gate executes policy — it does not reason, interpret, or fill in gaps. If the policy cannot decide, it should downgrade or reject, not guess. |
 
 ## Changelog
+
+### 0.1.9
+- Three new example policies: `agent-step-policy.ts` (research agent step gate), `tool-call-policy.ts` (LLM tool call gate), `action-gate-policy.ts` (irreversible action gate)
+- README: added `SupportRef — not just evidence` section with `sourceType` semantics table and code patterns for tool-call, action, and agent-step gates
+- README: expanded examples section to cover all 8 example policies
+
+### 0.1.8
+- `demo/demo.ts` added: narrative walkthrough of all 6 scenarios mirroring the Python demo
 
 ### 0.1.7
 - Code quality audit across all source files: fixed stale comments, removed dead code, eliminated LLM-specific language from generic infrastructure
