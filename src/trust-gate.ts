@@ -4,25 +4,25 @@ import { BaseRenderer } from "./renderer/base-renderer.js";
 import { createDefaultAuditWriter } from "./audit/audit-log.js";
 import type { Proposal } from "./types/proposal.js";
 import type { SupportRef } from "./types/support.js";
-import type { HarnessPolicy } from "./types/policy.js";
+import type { GatePolicy } from "./types/policy.js";
 import type { AdmissionResult } from "./types/admission.js";
 import type { AuditWriter } from "./types/audit.js";
 import type {
   VerifiedContext,
   RenderContext,
-  HarnessExplanation,
+  GateExplanation,
 } from "./types/renderer.js";
 import type { LLMInvoker, RetryConfig } from "./types/retry.js";
 
-export type HarnessConfig<TUnit> = {
-  policy: HarnessPolicy<TUnit>;
+export type TrustGateConfig<TUnit> = {
+  policy: GatePolicy<TUnit>;
   auditWriter?: AuditWriter; // default: FileAuditWriter at .jingu-trust-gate/audit.jsonl
   retry?: RetryConfig;
   // content extractor for BaseRenderer — how to turn TUnit into text for Claude
   extractContent?: (unit: TUnit, support: SupportRef[]) => string;
 };
 
-export type Harness<TUnit> = {
+export type TrustGate<TUnit> = {
   /**
    * Synchronous admission — runs Gate only, no LLM.
    * Proposal must already be schema-valid (obtained via output_config.format or strict:true).
@@ -60,10 +60,10 @@ export type Harness<TUnit> = {
   /**
    * Read-only summary of admission result — for orchestrators that don't need render.
    */
-  explain(result: AdmissionResult<TUnit>): HarnessExplanation;
+  explain(result: AdmissionResult<TUnit>): GateExplanation;
 };
 
-export function createHarness<TUnit>(config: HarnessConfig<TUnit>): Harness<TUnit> {
+export function createTrustGate<TUnit>(config: TrustGateConfig<TUnit>): TrustGate<TUnit> {
   const auditWriter = config.auditWriter ?? createDefaultAuditWriter();
   const runner = new GateRunner(config.policy, auditWriter);
   const renderer = new BaseRenderer();
@@ -108,7 +108,7 @@ export function createHarness<TUnit>(config: HarnessConfig<TUnit>): Harness<TUni
 
 export function explainResult<TUnit>(
   result: AdmissionResult<TUnit>
-): HarnessExplanation {
+): GateExplanation {
   const allUnits = [...result.admittedUnits, ...result.rejectedUnits];
   const reasonCodes = new Set<string>();
 

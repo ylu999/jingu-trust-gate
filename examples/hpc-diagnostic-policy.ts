@@ -27,8 +27,8 @@
  *   npm run build && node dist/examples/hpc-diagnostic-policy.js
  */
 
-import { createHarness } from "../src/harness.js";
-import type { HarnessPolicy } from "../src/types/policy.js";
+import { createTrustGate } from "../src/trust-gate.js";
+import type { GatePolicy } from "../src/types/policy.js";
 import type { Proposal } from "../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
 import type {
@@ -63,7 +63,7 @@ type ObsAttributes = {
 
 // ── Policy ────────────────────────────────────────────────────────────────────
 
-class HpcDiagnosticPolicy implements HarnessPolicy<DiagnosticClaim> {
+class HpcDiagnosticPolicy implements GatePolicy<DiagnosticClaim> {
 
   // Step 1: structural validation
   // Reject proposals missing required fields before any evidence binding occurs.
@@ -360,7 +360,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: new HpcDiagnosticPolicy(),
     auditWriter: noopAuditWriter(),
   });

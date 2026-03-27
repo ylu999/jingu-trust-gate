@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createHarness, explainResult } from "../../src/harness.js";
-import type { HarnessPolicy } from "../../src/types/policy.js";
+import { createTrustGate, explainResult } from "../../src/trust-gate.js";
+import type { GatePolicy } from "../../src/types/policy.js";
 import type { ConflictAnnotation } from "../../src/types/gate.js";
 import type { Proposal } from "../../src/types/proposal.js";
 import type { SupportRef } from "../../src/types/support.js";
@@ -33,7 +33,7 @@ function createMockPolicy(opts: {
   newGrade?: string;
   conflicts?: ConflictAnnotation[];
   perUnitDecisions?: Array<"approve" | "downgrade" | "reject">;
-}): HarnessPolicy<TestUnit> {
+}): GatePolicy<TestUnit> {
   let callCount = 0;
   return {
     validateStructure: () => ({
@@ -77,10 +77,10 @@ function createMockPolicy(opts: {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("createHarness integration", () => {
+describe("createTrustGate integration", () => {
   // Test 1: admit() — all approve → admittedUnits non-empty, rejectedUnits empty
   it("Test 1: admit all approve → admittedUnits non-empty, rejectedUnits empty", async () => {
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "approve" }),
       auditWriter: makeNoopAuditWriter(),
     });
@@ -102,7 +102,7 @@ describe("createHarness integration", () => {
 
   // Test 2: admit() with reject → rejectedUnits non-empty
   it("Test 2: admit with reject → rejectedUnits non-empty", async () => {
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "reject" }),
       auditWriter: makeNoopAuditWriter(),
     });
@@ -119,7 +119,7 @@ describe("createHarness integration", () => {
 
   // Test 3: admit() with downgrade → status=downgraded, appliedGrades includes newGrade
   it("Test 3: admit with downgrade → status=downgraded, appliedGrades contains newGrade", async () => {
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "downgrade", newGrade: "LOW" }),
       auditWriter: makeNoopAuditWriter(),
     });
@@ -145,7 +145,7 @@ describe("createHarness integration", () => {
         description: "timestamp mismatch",
       },
     ];
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ conflicts }),
       auditWriter: makeNoopAuditWriter(),
     });
@@ -162,7 +162,7 @@ describe("createHarness integration", () => {
 
   // Test 5: render() → VerifiedContext, admittedBlocks count equals admittedUnits count
   it("Test 5: render() → VerifiedContext blocks count matches admittedUnits count", async () => {
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "approve" }),
       auditWriter: makeNoopAuditWriter(),
       extractContent: (unit) => unit.content,
@@ -197,10 +197,10 @@ describe("createHarness integration", () => {
     // Override render to be undefined so BaseRenderer is used
     const policyWithoutRender = {
       ...policy,
-      render: undefined as unknown as HarnessPolicy<TestUnit>["render"],
+      render: undefined as unknown as GatePolicy<TestUnit>["render"],
     };
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: policyWithoutRender,
       auditWriter: makeNoopAuditWriter(),
       extractContent: (unit) => unit.content,
@@ -221,10 +221,10 @@ describe("createHarness integration", () => {
     const policy = createMockPolicy({ unitDecision: "downgrade", newGrade: "LOW" });
     const policyWithoutRender = {
       ...policy,
-      render: undefined as unknown as HarnessPolicy<TestUnit>["render"],
+      render: undefined as unknown as GatePolicy<TestUnit>["render"],
     };
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: policyWithoutRender,
       auditWriter: makeNoopAuditWriter(),
       extractContent: (unit) => unit.content,
@@ -248,7 +248,7 @@ describe("createHarness integration", () => {
       newGrade: "LOW",
     });
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy,
       auditWriter: makeNoopAuditWriter(),
     });
@@ -276,7 +276,7 @@ describe("createHarness integration", () => {
       perUnitDecisions: ["approve", "reject"],
     });
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy,
       auditWriter: makeNoopAuditWriter(),
     });
@@ -311,7 +311,7 @@ describe("createHarness integration", () => {
 
     // Policy that rejects on content "bad-first", approves otherwise
     let evalCount = 0;
-    const smartPolicy: HarnessPolicy<TestUnit> = {
+    const smartPolicy: GatePolicy<TestUnit> = {
       ...createMockPolicy({}),
       evaluateUnit: ({ unit }) => {
         const u = unit as TestUnit;
@@ -327,7 +327,7 @@ describe("createHarness integration", () => {
       },
     };
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: smartPolicy,
       auditWriter: makeNoopAuditWriter(),
       retry: { maxRetries: 3, retryOnDecisions: ["reject"] },
@@ -348,7 +348,7 @@ describe("createHarness integration", () => {
       return makeProposal([{ id: "u1", content: "bad", grade: "LOW" }]);
     };
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "reject" }),
       auditWriter: makeNoopAuditWriter(),
       retry: { maxRetries: 0, retryOnDecisions: ["reject"] },
@@ -365,7 +365,7 @@ describe("createHarness integration", () => {
       perUnitDecisions: ["approve", "reject"],
     });
 
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy,
       auditWriter: makeNoopAuditWriter(),
     });
@@ -387,7 +387,7 @@ describe("createHarness integration", () => {
 
   // Test 12: render() returns VerifiedContext (object with admittedBlocks), not a string
   it("Test 12: render() returns VerifiedContext (non-string, Claude API input)", async () => {
-    const harness = createHarness({
+    const harness = createTrustGate({
       policy: createMockPolicy({ unitDecision: "approve" }),
       auditWriter: makeNoopAuditWriter(),
       extractContent: (unit) => `Verified: ${unit.content}`,

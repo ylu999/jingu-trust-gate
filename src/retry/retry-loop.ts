@@ -1,5 +1,5 @@
 import type { SupportRef } from "../types/support.js";
-import type { HarnessPolicy } from "../types/policy.js";
+import type { GatePolicy } from "../types/policy.js";
 import type { AdmissionResult } from "../types/admission.js";
 import type { LLMInvoker, RetryConfig, RetryContext } from "../types/retry.js";
 import type { AuditWriter } from "../types/audit.js";
@@ -29,7 +29,7 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 export async function runWithRetry<TUnit>(
   invoker: LLMInvoker<TUnit>,
   support: SupportRef[],
-  policy: HarnessPolicy<TUnit>,
+  policy: GatePolicy<TUnit>,
   prompt: string,
   config: RetryConfig = DEFAULT_RETRY_CONFIG,
   auditWriter?: AuditWriter
@@ -81,7 +81,7 @@ export async function runWithRetry<TUnit>(
 
 function buildFeedbackFromResult<TUnit>(
   result: AdmissionResult<TUnit>,
-  policy: HarnessPolicy<TUnit>,
+  policy: GatePolicy<TUnit>,
   attempt: number,
   config: RetryConfig
 ) {

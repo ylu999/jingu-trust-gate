@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { runWithRetry } from "../../../src/retry/retry-loop.js";
-import type { HarnessPolicy } from "../../../src/types/policy.js";
+import type { GatePolicy } from "../../../src/types/policy.js";
 import type { Proposal } from "../../../src/types/proposal.js";
 import type { SupportRef } from "../../../src/types/support.js";
 import type { AuditEntry, AuditWriter } from "../../../src/types/audit.js";
@@ -27,7 +27,7 @@ const noSupport: SupportRef[] = [];
 function makeMockPolicy(opts: {
   unitDecision?: "approve" | "downgrade" | "reject";
   decisions?: Array<"approve" | "downgrade" | "reject">; // per-call sequence
-}): HarnessPolicy<TestUnit> {
+}): GatePolicy<TestUnit> {
   let callIndex = 0;
   return {
     validateStructure: () => ({ kind: "structure", valid: true, errors: [] }),

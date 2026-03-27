@@ -9,7 +9,7 @@ import type { AdmittedUnit } from "./admission.js";
 import type { VerifiedContext, RenderContext } from "./renderer.js";
 import type { RetryFeedback, RetryContext } from "./retry.js";
 
-export interface HarnessPolicy<TUnit> {
+export interface GatePolicy<TUnit> {
   // Step 1: validate Proposal structure (proposal-level)
   validateStructure(proposal: Proposal<TUnit>): StructureValidationResult;
 

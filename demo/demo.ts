@@ -10,11 +10,11 @@
  */
 
 import assert from "node:assert/strict";
-import { createHarness } from "../src/harness.js";
+import { createTrustGate } from "../src/trust-gate.js";
 import { ClaudeContextAdapter } from "../src/adapters/claude-adapter.js";
 import { OpenAIContextAdapter } from "../src/adapters/openai-adapter.js";
 import { GeminiContextAdapter } from "../src/adapters/gemini-adapter.js";
-import type { HarnessPolicy } from "../src/types/policy.js";
+import type { GatePolicy } from "../src/types/policy.js";
 import type { Proposal } from "../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
 import type {
@@ -112,7 +112,7 @@ function explain(text: string): void {
  * Conflict detection is injected per-scenario so the demo can control
  * when ITEM_CONFLICT fires without duplicating policy logic.
  */
-class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
+class MemoryPolicy implements GatePolicy<MemoryClaim> {
   constructor(
     private readonly injectedConflicts: ConflictAnnotation[] = []
   ) {}
@@ -250,7 +250,7 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
   }
 }
 
-function createMemoryPolicy(conflicts: ConflictAnnotation[] = []): HarnessPolicy<MemoryClaim> {
+function createMemoryPolicy(conflicts: ConflictAnnotation[] = []): GatePolicy<MemoryClaim> {
   const p = new MemoryPolicy(conflicts);
   return {
     validateStructure: p.validateStructure.bind(p),
@@ -280,7 +280,7 @@ function printIronLaws(): void {
   explain("All gate evaluation is pure code. No AI judges AI. This guarantees determinism and auditability.");
   console.log();
   console.log("  Law 2 — Policy is injected");
-  explain("jingu-trust-gate core carries no business semantics. The caller injects a HarnessPolicy that defines what 'valid' means for their domain.");
+  explain("jingu-trust-gate core carries no business semantics. The caller injects a GatePolicy that defines what 'valid' means for their domain.");
   console.log();
   console.log("  Law 3 — Every admission decision is written to audit log");
   explain("Every admit() call writes an AuditEntry. The system is accountable by design, not by convention.");
@@ -380,7 +380,7 @@ async function scenario1(): Promise<void> {
     },
   ]);
 
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: createMemoryPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -473,7 +473,7 @@ async function scenario2(): Promise<void> {
     },
   ]);
 
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: createMemoryPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -568,7 +568,7 @@ async function scenario3(): Promise<void> {
     },
   ]);
 
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: createMemoryPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -699,7 +699,7 @@ async function scenario4(): Promise<void> {
     },
   ]);
 
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: createMemoryPolicy(injectedConflicts),
     auditWriter: noopAuditWriter(),
   });
@@ -787,7 +787,7 @@ async function scenario4(): Promise<void> {
     },
   ];
 
-  const harnessBlocking = createHarness({
+  const harnessBlocking = createTrustGate({
     policy: createMemoryPolicy(blockingConflicts),
     auditWriter: noopAuditWriter(),
   });
@@ -922,7 +922,7 @@ async function scenario5(): Promise<void> {
     ]);
   };
 
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: createMemoryPolicy(),
     auditWriter: noopAuditWriter(),
     retry: { maxRetries: 3, retryOnDecisions: ["reject"] },

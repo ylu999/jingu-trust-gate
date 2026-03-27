@@ -13,7 +13,7 @@ export type {
   UnitStatus,
   AdmittedUnit,
   AdmissionResult,
-  HarnessPolicy,
+  GatePolicy,
   RetryFeedback,
   RetryConfig,
   RetryContext,
@@ -23,7 +23,7 @@ export type {
   VerifiedBlock,
   VerifiedContext,
   RenderContext,
-  HarnessExplanation,
+  GateExplanation,
 } from "./types/index.js";
 
 export { FileAuditWriter, createDefaultAuditWriter } from "./audit/audit-log.js";
@@ -43,8 +43,8 @@ export { GateRunner } from "./gate/gate-runner.js";
 export { BaseRenderer } from "./renderer/base-renderer.js";
 
 // Public API
-export { createHarness, explainResult } from "./harness.js";
-export type { HarnessConfig, Harness } from "./harness.js";
+export { createTrustGate, explainResult } from "./trust-gate.js";
+export type { TrustGateConfig, TrustGate } from "./trust-gate.js";
 
 // Retry Loop
 export { runWithRetry } from "./retry/retry-loop.js";

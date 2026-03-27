@@ -26,7 +26,7 @@ export type RenderContext = {
   metadata?: Record<string, unknown>;
 };
 
-export type HarnessExplanation = {
+export type GateExplanation = {
   totalUnits: number;
   approved: number;
   downgraded: number;

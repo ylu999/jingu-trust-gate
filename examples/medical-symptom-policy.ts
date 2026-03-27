@@ -33,8 +33,8 @@
  *   npm run build && node dist/examples/medical-symptom-policy.js
  */
 
-import { createHarness } from "../src/harness.js";
-import type { HarnessPolicy } from "../src/types/policy.js";
+import { createTrustGate } from "../src/trust-gate.js";
+import type { GatePolicy } from "../src/types/policy.js";
 import type { Proposal } from "../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
 import type {
@@ -73,7 +73,7 @@ type EvidenceAttrs = {
 
 // ── Policy ────────────────────────────────────────────────────────────────────
 
-class MedicalSymptomPolicy implements HarnessPolicy<SymptomClaim> {
+class MedicalSymptomPolicy implements GatePolicy<SymptomClaim> {
 
   validateStructure(proposal: Proposal<SymptomClaim>): StructureValidationResult {
     const errors: StructureValidationResult["errors"] = [];
@@ -293,7 +293,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: new MedicalSymptomPolicy(),
     auditWriter: noopAuditWriter(),
   });

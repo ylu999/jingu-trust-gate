@@ -1,7 +1,7 @@
 import { describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import { GateRunner } from "../../../src/gate/gate-runner.js";
-import type { HarnessPolicy } from "../../../src/types/policy.js";
+import type { GatePolicy } from "../../../src/types/policy.js";
 import type { ConflictAnnotation } from "../../../src/types/gate.js";
 import type { Proposal } from "../../../src/types/proposal.js";
 import type { SupportRef } from "../../../src/types/support.js";
@@ -27,7 +27,7 @@ function makeMockPolicy(opts: {
   unitDecision?: "approve" | "downgrade" | "reject";
   newGrade?: string;
   conflicts?: ConflictAnnotation[];
-}): HarnessPolicy<TestUnit> {
+}): GatePolicy<TestUnit> {
   return {
     validateStructure: () => ({
       kind: "structure",
@@ -173,7 +173,7 @@ describe("GateRunner", () => {
       "reject",  // u2
       "approve", // u3
     ];
-    const mixedPolicy: HarnessPolicy<TestUnit> = {
+    const mixedPolicy: GatePolicy<TestUnit> = {
       validateStructure: () => ({ kind: "structure", valid: true, errors: [] }),
       bindSupport: (unit, pool) => ({ unit, supportIds: pool.map((s) => s.id), supportRefs: pool }),
       evaluateUnit: ({ unit }) => {
@@ -223,7 +223,7 @@ describe("GateRunner", () => {
 
   it("Test 7: structure failure → evaluateUnit never called", async () => {
     let evaluateCalled = 0;
-    const policy: HarnessPolicy<TestUnit> = {
+    const policy: GatePolicy<TestUnit> = {
       validateStructure: () => ({
         kind: "structure",
         valid: false,

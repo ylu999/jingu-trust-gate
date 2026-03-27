@@ -34,8 +34,8 @@
  *   npm run build && node dist/examples/legal-contract-policy.js
  */
 
-import { createHarness } from "../src/harness.js";
-import type { HarnessPolicy } from "../src/types/policy.js";
+import { createTrustGate } from "../src/trust-gate.js";
+import type { GatePolicy } from "../src/types/policy.js";
 import type { Proposal } from "../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
 import type {
@@ -80,7 +80,7 @@ type ClauseAttrs = {
 
 // ── Policy ────────────────────────────────────────────────────────────────────
 
-class LegalContractPolicy implements HarnessPolicy<ContractClaim> {
+class LegalContractPolicy implements GatePolicy<ContractClaim> {
 
   validateStructure(proposal: Proposal<ContractClaim>): StructureValidationResult {
     const errors: StructureValidationResult["errors"] = [];
@@ -329,7 +329,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createHarness({
+  const harness = createTrustGate({
     policy: new LegalContractPolicy(),
     auditWriter: noopAuditWriter(),
   });

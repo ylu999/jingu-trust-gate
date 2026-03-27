@@ -12,12 +12,12 @@ export type {
   AdmittedUnit,
   AdmissionResult,
 } from "./admission.js";
-export type { HarnessPolicy } from "./policy.js";
+export type { GatePolicy } from "./policy.js";
 export type { RetryFeedback, RetryConfig, RetryContext, LLMInvoker } from "./retry.js";
 export type { AuditEntry, AuditWriter } from "./audit.js";
 export type {
   VerifiedBlock,
   VerifiedContext,
   RenderContext,
-  HarnessExplanation,
+  GateExplanation,
 } from "./renderer.js";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Proposal } from "../types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../types/support.js";
-import type { HarnessPolicy } from "../types/policy.js";
+import type { GatePolicy } from "../types/policy.js";
 import type { AdmissionResult } from "../types/admission.js";
 import type { AuditWriter } from "../types/audit.js";
 import {
@@ -13,7 +13,7 @@ import { buildAuditEntry } from "../audit/audit-entry.js";
 
 export class GateRunner<TUnit> {
   constructor(
-    private readonly policy: HarnessPolicy<TUnit>,
+    private readonly policy: GatePolicy<TUnit>,
     private readonly auditWriter?: AuditWriter
   ) {}
 
