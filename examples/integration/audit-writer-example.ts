@@ -22,7 +22,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { createTrustGate, FileAuditWriter } from "../../src/trust-gate.js";
+import { createTrustGate } from "../../src/trust-gate.js";
+import { FileAuditWriter } from "../../src/index.js";
 import type { GatePolicy } from "../../src/types/policy.js";
 import type { Proposal } from "../../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../../src/types/support.js";
@@ -104,7 +105,7 @@ class SimplePolicy implements GatePolicy<SimpleClaim> {
 async function main(): Promise<void> {
   // FileAuditWriter writes to .jingu-trust-gate/audit.jsonl in cwd.
   // The directory is created automatically on first write.
-  const auditWriter = new FileAuditWriter();
+  const auditWriter = new FileAuditWriter(".jingu-trust-gate/audit.jsonl");
 
   const gate = createTrustGate({
     policy: new SimplePolicy(),
@@ -174,7 +175,10 @@ async function main(): Promise<void> {
   assert.ok(entry1, "Entry for prop-audit-001 should be in audit log");
   assert.equal(entry1.approvedCount, 1, "entry1 should record 1 approved");
   assert.equal(entry1.rejectedCount, 1, "entry1 should record 1 rejected");
-  assert.ok(entry1.gateReasonCodes.includes("MISSING_EVIDENCE"), "entry1 should record reason code");
+  const entry1ReasonCodes = entry1.gateResults
+    .filter(r => "reasonCode" in r)
+    .map(r => (r as { reasonCode: string }).reasonCode);
+  assert.ok(entry1ReasonCodes.includes("MISSING_EVIDENCE"), "entry1 should record reason code");
 
   assert.ok(entry2, "Entry for prop-audit-002 should be in audit log");
   assert.equal(entry2.approvedCount, 2, "entry2 should record 2 approved");
@@ -186,7 +190,7 @@ async function main(): Promise<void> {
   for (const entry of entries) {
     console.log(
       `  ${entry.proposalId}  approved=${entry.approvedCount}  rejected=${entry.rejectedCount}` +
-      `  codes=${JSON.stringify(entry.gateReasonCodes)}  ts=${entry.timestamp}`
+      `  codes=${JSON.stringify(entry.gateResults.filter(r => "reasonCode" in r).map(r => (r as { reasonCode: string }).reasonCode))}  ts=${entry.timestamp}`
     );
   }
 

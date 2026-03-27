@@ -9,8 +9,8 @@
  *   import { ClaudeContextAdapter } from "./examples/adapter-examples.js";
  */
 
-import type { ContextAdapter } from "../src/index.js";
-import type { VerifiedBlock, VerifiedContext } from "../src/types/renderer.js";
+import type { ContextAdapter } from "../../src/index.js";
+import type { VerifiedBlock, VerifiedContext } from "../../src/types/renderer.js";
 
 
 // ── Claude ─────────────────────────────────────────────────────────────────────

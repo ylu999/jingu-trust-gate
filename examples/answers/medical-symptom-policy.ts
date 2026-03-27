@@ -33,19 +33,19 @@
  *   npm run build && node dist/examples/medical-symptom-policy.js
  */
 
-import { createTrustGate } from "../src/trust-gate.js";
-import type { GatePolicy } from "../src/types/policy.js";
-import type { Proposal } from "../src/types/proposal.js";
-import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
+import { createTrustGate } from "../../src/trust-gate.js";
+import type { GatePolicy } from "../../src/types/policy.js";
+import type { Proposal } from "../../src/types/proposal.js";
+import type { SupportRef, UnitWithSupport } from "../../src/types/support.js";
 import type {
   StructureValidationResult,
   UnitEvaluationResult,
   ConflictAnnotation,
-} from "../src/types/gate.js";
-import type { AdmittedUnit } from "../src/types/admission.js";
-import type { VerifiedContext, RenderContext } from "../src/types/renderer.js";
-import type { RetryFeedback, RetryContext } from "../src/types/retry.js";
-import type { AuditEntry, AuditWriter } from "../src/types/audit.js";
+} from "../../src/types/gate.js";
+import type { AdmittedUnit } from "../../src/types/admission.js";
+import type { VerifiedContext, RenderContext } from "../../src/types/renderer.js";
+import type { RetryFeedback, RetryContext } from "../../src/types/retry.js";
+import type { AuditEntry, AuditWriter } from "../../src/types/audit.js";
 
 // ── Domain types ──────────────────────────────────────────────────────────────
 

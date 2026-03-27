@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { GeminiContextAdapter } from "../../../examples/adapter-examples.js";
+import { GeminiContextAdapter } from "../../../examples/integration/adapter-examples.js";
 import type { VerifiedContext } from "../../../src/types/renderer.js";
 
 function makeContext(overrides: Partial<VerifiedContext> = {}): VerifiedContext {

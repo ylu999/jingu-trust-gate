@@ -255,8 +255,7 @@ async function main(): Promise<void> {
   const gateWithDowngradeRetry = createTrustGate({
     policy: new CapturingPolicy(),
     auditWriter: noopAuditWriter(),
-    retryOnDecisions: ["downgrade"],
-    maxRetries: 2,
+    retry: { retryOnDecisions: ["downgrade"], maxRetries: 2 },
   });
 
   // First admission: claim-1 is downgraded → gate triggers retry feedback

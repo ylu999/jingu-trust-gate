@@ -528,7 +528,7 @@ async function main(): Promise<void> {
     }
   }
   label("conflicts", explB.conflicts);
-  label("admitted", explB.approved + explB.downgraded + explB.approvedWithConflict);
+  label("admitted", explB.approved + explB.downgraded + explB.conflicts);
 
   subsep("ASSERTIONS");
 
