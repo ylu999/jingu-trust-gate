@@ -34,6 +34,22 @@ LLM: "You have exactly 3 apples"     ← grade=proven, evidenceRefs=[]
 → audit log records the rejection
 ```
 
+## This is not a guardrails framework
+
+Guardrails frameworks (NeMo Guardrails, Guardrails AI) check whether LLM output is **safe or well-formed**. They block toxic content, enforce schemas, detect PII. That is a different problem.
+
+jingu-harness checks whether each **claim is actually supported by your evidence**. It does not care whether output is polite or syntactically valid. It cares whether what the LLM asserts can be proven from the data you have.
+
+| System | What it checks | Mechanism | Grain |
+|--------|---------------|-----------|-------|
+| Guardrails AI | Is the output safe / valid? | validators, LLM critics | response-level |
+| NeMo Guardrails | Does the bot stay on-topic? | policy rules | turn-level |
+| RAG / grounding | Did retrieval find relevant docs? | vector similarity | document-level |
+| DeepEval | How often does the model hallucinate? | offline scoring | benchmark-level |
+| **jingu-harness** | **Is each claim supported by your evidence?** | **deterministic gate, zero LLM** | **claim-level** |
+
+To our knowledge, existing systems validate outputs, evaluate models, or retrieve evidence — but do not provide a deterministic admission boundary that enforces what claims are allowed to be treated as true at runtime.
+
 ## The mental model
 
 Think of it like a fact-checker that sits between your retrieval system and your LLM. The LLM proposes claims. The gate decides which claims are trustworthy enough to use.
