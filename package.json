@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test 'dist/tests/**/*.test.js'",
     "demo": "npm run build && node dist/demo/demo.js",
-    "aha": "npm run build && node dist/demo/aha-moment-demo.js"
+    "demo:aha": "npm run build && node dist/demo/aha-moment-demo.js"
   },
   "repository": {
     "type": "git",

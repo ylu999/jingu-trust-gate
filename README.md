@@ -61,8 +61,8 @@ The two hallucinated facts are blocked at the boundary. They are never stored. T
 The gate does not make the model smarter. It makes the system honest about what it actually knows.
 
 ```
-npm run aha    # run the two scenarios above end-to-end
-npm run demo   # full 8-scenario walkthrough
+npm run demo:aha   # the two scenarios above, with pacing
+npm run demo       # full 8-scenario walkthrough
 ```
 
 ---
