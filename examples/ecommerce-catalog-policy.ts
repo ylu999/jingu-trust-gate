@@ -334,7 +334,7 @@ class EcommerceCatalogPolicy implements GatePolicy<ProductClaim> {
       admittedBlocks,
       summary: {
         admitted: admittedUnits.length,
-        rejected: 0, // patched by harness.render()
+        rejected: 0, // patched by gate.render()
         conflicts: admittedUnits.filter(u => u.status === "approved_with_conflict").length,
       },
       instructions:
@@ -389,7 +389,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createTrustGate({
+  const gate = createTrustGate({
     policy: new EcommerceCatalogPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -454,9 +454,9 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultA = await harness.admit(proposalA, poolA);
-  const contextA = harness.render(resultA);
-  const explA = harness.explain(resultA);
+  const resultA = await gate.admit(proposalA, poolA);
+  const contextA = gate.render(resultA);
+  const explA = gate.explain(resultA);
 
   console.log("\n  Gate results:");
   for (const u of resultA.admittedUnits) {
@@ -526,8 +526,8 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultB = await harness.admit(proposalB, poolB);
-  const explB = harness.explain(resultB);
+  const resultB = await gate.admit(proposalB, poolB);
+  const explB = gate.explain(resultB);
 
   console.log("\n  Gate results:");
   for (const u of resultB.admittedUnits) {
@@ -585,9 +585,9 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultC = await harness.admit(proposalC, poolC);
-  const contextC = harness.render(resultC);
-  const explC = harness.explain(resultC);
+  const resultC = await gate.admit(proposalC, poolC);
+  const contextC = gate.render(resultC);
+  const explC = gate.explain(resultC);
 
   // STOCK_CONFLICT is blocking — both units are force-rejected by the gate.
   // Neither claim reaches the LLM. The conflict annotation is in the audit log.

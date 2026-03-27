@@ -322,7 +322,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createTrustGate({
+  const gate = createTrustGate({
     policy: new BiAnalyticsPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -378,8 +378,8 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultA = await harness.admit(proposalA, poolA);
-  const explA = harness.explain(resultA);
+  const resultA = await gate.admit(proposalA, poolA);
+  const explA = gate.explain(resultA);
 
   console.log("\n  Gate results:");
   for (const u of resultA.admittedUnits) {
@@ -438,8 +438,8 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultB = await harness.admit(proposalB, poolB);
-  const explB = harness.explain(resultB);
+  const resultB = await gate.admit(proposalB, poolB);
+  const explB = gate.explain(resultB);
 
   console.log("\n  Gate results:");
   for (const u of resultB.admittedUnits) {
@@ -492,8 +492,8 @@ async function main(): Promise<void> {
     ],
   };
 
-  const resultC = await harness.admit(proposalC, poolC);
-  const explC = harness.explain(resultC);
+  const resultC = await gate.admit(proposalC, poolC);
+  const explC = gate.explain(resultC);
 
   console.log("\n  Gate results (METRIC_CONFLICT blocking — both force-rejected):");
   for (const u of resultC.rejectedUnits) {

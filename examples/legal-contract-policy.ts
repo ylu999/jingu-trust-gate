@@ -329,7 +329,7 @@ function label(key: string, value: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const harness = createTrustGate({
+  const gate = createTrustGate({
     policy: new LegalContractPolicy(),
     auditWriter: noopAuditWriter(),
   });
@@ -407,9 +407,9 @@ async function main(): Promise<void> {
     ],
   };
 
-  const result = await harness.admit(proposal, supportPool);
-  const context = harness.render(result);
-  const explanation = harness.explain(result);
+  const result = await gate.admit(proposal, supportPool);
+  const context = gate.render(result);
+  const explanation = gate.explain(result);
 
   sep("Legal Contract Policy — Admission Result");
 
