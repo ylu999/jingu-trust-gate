@@ -354,6 +354,52 @@ class MyAdapter implements ContextAdapter<MyWireFormat> {
 
 Reference implementations for Claude, OpenAI, and Gemini are in [`examples/adapter-examples.ts`](examples/adapter-examples.ts). Copy and adapt as needed — they are not part of the published package.
 
+## SupportRef — not just evidence
+
+`SupportRef` is the unit of context that a proposal unit can be bound to. The name "evidence" is the most common usage, but `sourceType` is a free string — you define the semantics for your domain.
+
+The same mechanism works for any context that needs to constrain what an LLM or agent is allowed to assert or do:
+
+| `sourceType` value | What it represents | Typical domain |
+|---|---|---|
+| `"document"` / `"observation"` | Retrieved RAG evidence | Knowledge base Q&A |
+| `"prerequisite"` | A condition that must be true before a step can run | Agent planning |
+| `"system_state"` | Current runtime state (queue depth, error count, flag value) | SRE / ops agents |
+| `"user_intent"` / `"explicit_request"` | A statement the user actually made | Tool call / action gate |
+| `"user_confirmation"` | Explicit user approval for a risky action | High-risk action gate |
+| `"prior_result"` / `"tool_output"` | Output from a previous tool call | Multi-step agents |
+| `"permission"` / `"authorization"` | A capability or role grant | Authority enforcement |
+| `"finding"` | A concluded fact from earlier reasoning | Research agents |
+
+Your `bindSupport()` and `evaluateUnit()` filter and check by `sourceType`. For example:
+
+```ts
+// Tool call gate: reject if no "explicit_request" in support
+evaluateUnit(uws) {
+  const hasIntent = uws.supportRefs.some(s => s.sourceType === "explicit_request");
+  if (!hasIntent) return { decision: "reject", reasonCode: "INTENT_NOT_ESTABLISHED" };
+  ...
+}
+
+// Action gate: require "user_confirmation" for high-risk irreversible actions
+evaluateUnit(uws) {
+  if (uws.unit.riskLevel === "high" && !uws.unit.isReversible) {
+    const confirmed = uws.supportRefs.some(s => s.sourceType === "user_confirmation");
+    if (!confirmed) return { decision: "reject", reasonCode: "CONFIRM_REQUIRED" };
+  }
+  ...
+}
+
+// Agent step gate: reject if required context IDs are not in support pool
+evaluateUnit(uws) {
+  if (uws.unit.grade === "required" && uws.supportIds.length === 0)
+    return { decision: "reject", reasonCode: "MISSING_CONTEXT" };
+  ...
+}
+```
+
+See `examples/tool-call-policy.ts`, `examples/action-gate-policy.ts`, and `examples/agent-step-policy.ts` for complete working implementations of each pattern.
+
 ## SupportRef ID clarification
 
 `SupportRef` has two IDs that serve different purposes:
