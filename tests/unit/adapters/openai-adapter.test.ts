@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { OpenAIContextAdapter } from "../../../src/adapters/openai-adapter.js";
+import { OpenAIContextAdapter } from "../../../examples/adapter-examples.js";
 import type { VerifiedContext } from "../../../src/types/renderer.js";
 
 function makeContext(overrides: Partial<VerifiedContext> = {}): VerifiedContext {

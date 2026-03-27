@@ -11,9 +11,9 @@
 
 import assert from "node:assert/strict";
 import { createTrustGate } from "../src/trust-gate.js";
-import { ClaudeContextAdapter } from "../src/adapters/claude-adapter.js";
-import { OpenAIContextAdapter } from "../src/adapters/openai-adapter.js";
-import { GeminiContextAdapter } from "../src/adapters/gemini-adapter.js";
+import { ClaudeContextAdapter } from "../examples/adapter-examples.js";
+import { OpenAIContextAdapter } from "../examples/adapter-examples.js";
+import { GeminiContextAdapter } from "../examples/adapter-examples.js";
 import type { GatePolicy } from "../src/types/policy.js";
 import type { Proposal } from "../src/types/proposal.js";
 import type { SupportRef, UnitWithSupport } from "../src/types/support.js";
