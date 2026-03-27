@@ -358,6 +358,33 @@ describe("createHarness integration", () => {
     assert.equal(invokerCallCount, 1, "invoker should be called exactly once when maxRetries=0");
   });
 
+  // Test 13: render() summary.rejected reflects actual rejectedUnits count
+  it("Test 13: render() summary.rejected equals actual rejectedUnits count", async () => {
+    // 2 units: u1=approve, u2=reject — policy.render() hardcodes rejected:0, harness must patch it
+    const policy = createMockPolicy({
+      perUnitDecisions: ["approve", "reject"],
+    });
+
+    const harness = createHarness({
+      policy,
+      auditWriter: makeNoopAuditWriter(),
+    });
+
+    const result = await harness.admit(
+      makeProposal([
+        { id: "u1", content: "good", grade: "HIGH" },
+        { id: "u2", content: "bad", grade: "LOW" },
+      ]),
+      noSupport
+    );
+
+    assert.equal(result.admittedUnits.length, 1);
+    assert.equal(result.rejectedUnits.length, 1);
+
+    const ctx = harness.render(result);
+    assert.equal(ctx.summary.rejected, 1, "summary.rejected must reflect actual rejectedUnits count");
+  });
+
   // Test 12: render() returns VerifiedContext (object with admittedBlocks), not a string
   it("Test 12: render() returns VerifiedContext (non-string, Claude API input)", async () => {
     const harness = createHarness({

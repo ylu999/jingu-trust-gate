@@ -87,7 +87,7 @@ export function createHarness<TUnit>(config: HarnessConfig<TUnit>): Harness<TUni
     },
 
     render(result, support = [], context = {}) {
-      return config.policy.render
+      const ctx = config.policy.render
         ? config.policy.render(result.admittedUnits, support, context)
         : renderer.render(
             result.admittedUnits,
@@ -95,6 +95,9 @@ export function createHarness<TUnit>(config: HarnessConfig<TUnit>): Harness<TUni
             context,
             extractContent
           );
+      // policy.render() doesn't receive rejectedUnits — patch the count here
+      ctx.summary.rejected = result.rejectedUnits.length;
+      return ctx;
     },
 
     explain(result) {
