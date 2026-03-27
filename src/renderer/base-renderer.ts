@@ -37,7 +37,7 @@ export class BaseRenderer {
             : undefined,
         conflictNote:
           admittedUnit.status === "approved_with_conflict"
-            ? buildConflictNote(admittedUnit.conflictAnnotation)
+            ? buildConflictNote(admittedUnit.conflictAnnotations)
             : undefined,
       };
 
@@ -60,11 +60,15 @@ export class BaseRenderer {
 }
 
 function buildConflictNote(
-  annotation: ConflictAnnotation | undefined
+  annotations: ConflictAnnotation[] | undefined
 ): string {
-  if (!annotation) return "conflicting information detected";
-  return (
-    annotation.description ??
-    `conflict detected (${annotation.conflictCode}): sources ${annotation.sources.join(", ")}`
-  );
+  if (!annotations || annotations.length === 0) return "conflicting information detected";
+  // Join all conflict notes if there are multiple; otherwise use the single one
+  return annotations
+    .map(
+      (a) =>
+        a.description ??
+        `conflict detected (${a.conflictCode}): sources ${a.sources.join(", ")}`
+    )
+    .join("; ");
 }

@@ -72,14 +72,16 @@ function makeMockAuditWriter(): { writer: AuditWriter; calls: AuditEntry[] } {
 // ---------------------------------------------------------------------------
 
 describe("GateRunner", () => {
-  it("Test 1: structure validation failure → empty AdmissionResult", async () => {
+  it("Test 1: structure validation failure → admittedUnits empty, units appear in rejectedUnits", async () => {
     const policy = makeMockPolicy({ structureValid: false });
     const runner = new GateRunner(policy);
     const result = await runner.run(makeProposal([{ id: "u1", content: "x" }]), emptySupportPool);
 
     assert.equal(result.proposalId, "prop-1");
     assert.equal(result.admittedUnits.length, 0);
-    assert.equal(result.rejectedUnits.length, 0);
+    // units are NOT silently lost — they appear in rejectedUnits with STRUCTURE_INVALID
+    assert.equal(result.rejectedUnits.length, 1);
+    assert.equal(result.rejectedUnits[0].evaluationResults[0].reasonCode, "STRUCTURE_INVALID");
     assert.equal(result.hasConflicts, false);
     assert.ok(result.auditId);
   });
@@ -147,9 +149,9 @@ describe("GateRunner", () => {
 
     assert.equal(result.admittedUnits.length, 1);
     assert.equal(result.admittedUnits[0].status, "approved_with_conflict");
-    assert.ok(result.admittedUnits[0].conflictAnnotation);
+    assert.ok(result.admittedUnits[0].conflictAnnotations?.[0]);
     assert.equal(
-      result.admittedUnits[0].conflictAnnotation!.conflictCode,
+      result.admittedUnits[0].conflictAnnotations?.[0]?.conflictCode,
       "TEMPORAL_CONFLICT"
     );
     assert.equal(result.hasConflicts, true);
@@ -242,6 +244,38 @@ describe("GateRunner", () => {
     await runner.run(makeProposal([{ id: "u1", content: "x" }]), emptySupportPool);
 
     assert.equal(evaluateCalled, 0, "evaluateUnit must not be called when structure fails");
+  });
+
+  it("Test 9: unit in 2 conflicts → conflictAnnotations.length === 2", async () => {
+    const conflicts: ConflictAnnotation[] = [
+      {
+        unitIds: ["u1"],
+        conflictCode: "TEMPORAL_CONFLICT",
+        sources: ["s1"],
+        severity: "informational",
+        description: "first conflict",
+      },
+      {
+        unitIds: ["u1"],
+        conflictCode: "ATTR_CONFLICT",
+        sources: ["s2"],
+        severity: "informational",
+        description: "second conflict",
+      },
+    ];
+    const policy = makeMockPolicy({ conflicts });
+    const runner = new GateRunner(policy);
+    const result = await runner.run(
+      makeProposal([{ id: "u1", content: "multi-conflict" }]),
+      someSupportPool
+    );
+
+    assert.equal(result.admittedUnits.length, 1);
+    assert.equal(result.admittedUnits[0].status, "approved_with_conflict");
+    assert.equal(result.admittedUnits[0].conflictAnnotations?.length, 2);
+    const codes = result.admittedUnits[0].conflictAnnotations?.map((c) => c.conflictCode);
+    assert.ok(codes?.includes("TEMPORAL_CONFLICT"));
+    assert.ok(codes?.includes("ATTR_CONFLICT"));
   });
 
   it("Test 8: auditWriter.append called exactly once regardless of outcome", async () => {

@@ -37,7 +37,7 @@ export function buildAdmittedUnit<TUnit>(
   if (evaluationResult.newGrade) {
     appliedGrades.push(evaluationResult.newGrade);
   }
-  const conflictAnnotation = conflictAnnotations.find((c) =>
+  const matchedConflicts = conflictAnnotations.filter((c) =>
     c.unitIds.includes(unitId)
   );
   return {
@@ -46,8 +46,8 @@ export function buildAdmittedUnit<TUnit>(
     status,
     appliedGrades,
     evaluationResults: [evaluationResult],
-    conflictAnnotation:
-      status === "approved_with_conflict" ? conflictAnnotation : undefined,
+    conflictAnnotations:
+      status === "approved_with_conflict" ? matchedConflicts : undefined,
     supportIds,
   };
 }

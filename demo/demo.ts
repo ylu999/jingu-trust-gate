@@ -141,7 +141,7 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
     unitWithSupport: UnitWithSupport<MemoryClaim>,
     _context: { proposalId: string; proposalKind: string }
   ): UnitEvaluationResult {
-    const { unit, supportIds } = unitWithSupport;
+    const { unit, supportIds, supportRefs } = unitWithSupport;
 
     // Rule A: proven claim must have at least one evidence reference
     if (unit.grade === "proven" && supportIds.length === 0) {
@@ -154,9 +154,9 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
     }
 
     // Rule B: claim asserts a specific brand but evidence has no brand attribute
+    // Uses supportRefs directly — no side-channel needed
     if (unit.attributes.hasBrand) {
-      const resolved = this._resolvedSupport.get(unit.id) ?? [];
-      const evidenceHasBrand = resolved.some(
+      const evidenceHasBrand = supportRefs.some(
         (s) => s.attributes?.brand !== undefined
       );
       if (!evidenceHasBrand) {
@@ -176,19 +176,6 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
       decision: "approve",
       reasonCode: "OK",
     };
-  }
-
-  // Side-channel: cache full SupportRef objects so evaluateUnit can inspect attributes
-  private _resolvedSupport: Map<string, SupportRef[]> = new Map();
-
-  bindSupportWithCache(
-    unit: MemoryClaim,
-    supportPool: SupportRef[]
-  ): UnitWithSupport<MemoryClaim> {
-    const refs = unit.evidenceRefs ?? [];
-    const matched = supportPool.filter((s) => refs.includes(s.sourceId));
-    this._resolvedSupport.set(unit.id, matched);
-    return { unit, supportIds: matched.map((s) => s.id), supportRefs: matched };
   }
 
   // Gate Step 4: cross-unit conflict detection
@@ -223,8 +210,8 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
           block.unsupportedAttributes = ["brand"];
         }
       }
-      if (u.status === "approved_with_conflict" && u.conflictAnnotation) {
-        block.conflictNote = `${u.conflictAnnotation.conflictCode}: ${u.conflictAnnotation.description ?? ""}`;
+      if (u.status === "approved_with_conflict" && u.conflictAnnotations && u.conflictAnnotations.length > 0) {
+        block.conflictNote = u.conflictAnnotations.map((c) => `${c.conflictCode}: ${c.description ?? ""}`).join("; ");
       }
       return block;
     });
@@ -267,7 +254,7 @@ function createMemoryPolicy(conflicts: ConflictAnnotation[] = []): HarnessPolicy
   const p = new MemoryPolicy(conflicts);
   return {
     validateStructure: p.validateStructure.bind(p),
-    bindSupport: p.bindSupportWithCache.bind(p),
+    bindSupport: p.bindSupport.bind(p),
     evaluateUnit: p.evaluateUnit.bind(p),
     detectConflicts: p.detectConflicts.bind(p),
     render: p.render.bind(p),
@@ -734,8 +721,8 @@ async function scenario4(): Promise<void> {
   for (const u of result.admittedUnits) {
     console.log(`  Unit: ${u.unitId}`);
     label("    status", u.status);
-    label("    conflictAnnotation.conflictCode", u.conflictAnnotation?.conflictCode);
-    label("    conflictAnnotation.severity", u.conflictAnnotation?.severity);
+    label("    conflictAnnotations[0].conflictCode", u.conflictAnnotations?.[0]?.conflictCode);
+    label("    conflictAnnotations[0].severity", u.conflictAnnotations?.[0]?.severity);
   }
 
   subsep("RENDER — VerifiedContext with conflict notes");
@@ -757,9 +744,9 @@ async function scenario4(): Promise<void> {
   assert.equal(result.rejectedUnits.length, 0);
   for (const u of result.admittedUnits) {
     assert.equal(u.status, "approved_with_conflict");
-    assert.ok(u.conflictAnnotation);
-    assert.equal(u.conflictAnnotation?.conflictCode, "ITEM_CONFLICT");
-    assert.equal(u.conflictAnnotation?.severity, "informational");
+    assert.ok(u.conflictAnnotations && u.conflictAnnotations.length > 0);
+    assert.equal(u.conflictAnnotations?.[0]?.conflictCode, "ITEM_CONFLICT");
+    assert.equal(u.conflictAnnotations?.[0]?.severity, "informational");
   }
   assert.ok(verifiedCtx.admittedBlocks.every((b) => b.conflictNote !== undefined));
 

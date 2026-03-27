@@ -12,7 +12,7 @@ export type AdmittedUnit<TUnit> = {
   status: UnitStatus;
   appliedGrades: string[]; // grade chain after downgrade(s)
   evaluationResults: UnitEvaluationResult[];
-  conflictAnnotation?: ConflictAnnotation; // required when status === "approved_with_conflict"
+  conflictAnnotations?: ConflictAnnotation[]; // all conflicts referencing this unit
   supportIds: string[]; // which SupportRefs were bound to this unit
 };
 
