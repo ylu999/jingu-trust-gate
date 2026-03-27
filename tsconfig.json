@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "cli/**/*", "tests/**/*", "explorer/**/*"],
+  "include": ["src/**/*", "cli/**/*", "tests/**/*", "explorer/**/*", "demo/**/*"],
   "exclude": ["node_modules", "dist"]
 }
