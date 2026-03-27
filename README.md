@@ -98,6 +98,20 @@ Your retrieval system
 | `rejected` | No evidence, or structure invalid | Blocked — never reaches LLM context |
 | `approved_with_conflict` | Claim has evidence but contradicts another claim | Admitted with conflict annotation |
 
+## Evidence support vs truth correctness
+
+harness does not determine whether a claim is true or false.
+
+It determines whether a claim is **supported by the available evidence**.
+
+The distinction matters:
+
+- A claim can be factually wrong but still only "over-specific relative to evidence" — both `approved` with full confidence and `downgraded` are valid outcomes depending on your policy
+- Whether a contradiction between a claim and its evidence is a `reject` or a `downgrade` is a policy decision, not a core harness decision
+- harness executes policy deterministically — it does not embed domain-specific truth semantics
+
+This design is intentional. The same harness instance works across domains because the semantics of "what counts as supported" live in your `HarnessPolicy`, not in the gate.
+
 ## Three iron laws
 
 1. **Gate Engine: zero LLM calls** — all four steps are deterministic code, not prompts. The gate is auditable and reproducible. No AI judging AI.
