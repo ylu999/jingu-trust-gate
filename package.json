@@ -1,6 +1,6 @@
 {
   "name": "jingu-trust-gate",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A deterministic trust gate for LLM systems",
   "type": "module",
   "main": "dist/src/index.js",
@@ -46,7 +46,6 @@
     "typescript": "^6.0.2"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
     "ajv": "^8.18.0"
   }
 }

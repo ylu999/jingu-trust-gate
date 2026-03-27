@@ -55,14 +55,6 @@ export {
   buildDefaultRetryFeedback,
 } from "./retry/retry-feedback.js";
 
-// Adapters — convert VerifiedContext to LLM API wire format
+// Adapter interface — convert VerifiedContext to LLM API wire format
+// Concrete implementations (Claude, OpenAI, Gemini) live in examples/adapter-examples.ts
 export type { ContextAdapter } from "./adapters/context-adapter.js";
-
-export { ClaudeContextAdapter } from "./adapters/claude-adapter.js";
-export type { ClaudeSearchResultBlock, ClaudeAdapterOptions } from "./adapters/claude-adapter.js";
-
-export { OpenAIContextAdapter } from "./adapters/openai-adapter.js";
-export type { OpenAIChatMessage, OpenAIAdapterOptions } from "./adapters/openai-adapter.js";
-
-export { GeminiContextAdapter } from "./adapters/gemini-adapter.js";
-export type { GeminiContent, GeminiTextPart, GeminiAdapterOptions } from "./adapters/gemini-adapter.js";
