@@ -103,14 +103,14 @@ describe("ClaudeContextAdapter", () => {
   });
 
   it("prepends sourcePrefix to source field", () => {
-    const adapter = new ClaudeContextAdapter({ sourcePrefix: "harness:" });
+    const adapter = new ClaudeContextAdapter({ sourcePrefix: "gate:" });
     const result = adapter.adapt(
       makeContext({
         admittedBlocks: [{ sourceId: "claim-1", content: "You have milk" }],
         summary: { admitted: 1, rejected: 0, conflicts: 0 },
       })
     );
-    assert.equal(result[0].source, "harness:claim-1");
+    assert.equal(result[0].source, "gate:claim-1");
   });
 
   it("converts multiple blocks preserving order", () => {
