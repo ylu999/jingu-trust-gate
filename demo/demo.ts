@@ -180,7 +180,7 @@ class MemoryPolicy implements HarnessPolicy<MemoryClaim> {
 
   // Gate Step 4: cross-unit conflict detection
   detectConflicts(
-    _units: MemoryClaim[],
+    _units: UnitWithSupport<MemoryClaim>[],
     _supportPool: SupportRef[]
   ): ConflictAnnotation[] {
     return this.injectedConflicts;

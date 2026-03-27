@@ -24,7 +24,7 @@ export interface HarnessPolicy<TUnit> {
 
   // Step 4: detect cross-unit conflicts
   detectConflicts(
-    units: TUnit[],
+    units: UnitWithSupport<TUnit>[],
     supportPool: SupportRef[]
   ): ConflictAnnotation[];
 
