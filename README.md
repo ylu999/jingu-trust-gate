@@ -64,7 +64,12 @@ The two hallucinated facts are blocked at the boundary. They are never stored. T
 
 The gate does not make the model smarter. It makes the system honest about what it actually knows.
 
+![jingu-trust-gate demo](./demo/demo.gif)
+
 ```
+# clone the repo to run demos
+git clone https://github.com/ylu999/jingu-trust-gate
+cd jingu-trust-gate && npm install && npm run build
 npm run demo:aha   # the two scenarios above, with pacing
 npm run demo       # full 8-scenario walkthrough
 ```
@@ -506,8 +511,11 @@ examples/
 
 ## Install and run
 
+Demos and examples require cloning the repo — they are not included in the published npm package.
+
 ```bash
-npm install
+git clone https://github.com/ylu999/jingu-trust-gate
+cd jingu-trust-gate && npm install
 npm test          # full test suite
 npm run demo:aha  # two-scenario aha-moment demo (start here)
 npm run demo      # full 8-scenario walkthrough
