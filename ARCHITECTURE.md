@@ -65,18 +65,27 @@ Thin functions that eliminate repetitive boilerplate across policy implementatio
 
 ### Layer 3 — Reference policies (`examples/`)
 
-Complete, runnable `GatePolicy` implementations for real domains. These are templates for users to read and adapt, not components to import.
+Complete, runnable `GatePolicy` implementations for real domains. These are templates for users to read and adapt, not components to import. Organized into four use-case categories:
+
+```
+examples/
+  answers/     — gate what the LLM claims in a response
+  actions/     — gate what the LLM agent is allowed to do
+  state/       — gate what the LLM is allowed to write into persistent state
+  integration/ — audit logging, retry loops, LLM API adapters
+```
 
 | File | Domain |
 |------|--------|
-| `medical-symptom-policy` | Health assistant — diagnosis/treatment gate |
-| `legal-contract-policy` | Contract review — term/figure/right grounding |
-| `hpc-diagnostic-policy` | GPU cluster SRE — severity/scope/metric gate |
-| `ecommerce-catalog-policy` | Product chatbot — feature/stock/conflict gate |
-| `bi-analytics-policy` | BI assistant — value/period/dimension gate |
-| `agent-step-policy` | Research agent — context/findings/redundancy gate |
-| `tool-call-policy` | LLM tool calls — intent/redundancy/justification gate |
-| `action-gate-policy` | Irreversible actions — authorization/confirmation/conflict gate |
+| `answers/medical-symptom-policy` | Health assistant — diagnosis/treatment gate |
+| `answers/legal-contract-policy` | Contract review — term/figure/right grounding |
+| `actions/tool-call-policy` | LLM tool calls — intent/redundancy/justification gate |
+| `actions/action-gate-policy` | Irreversible actions — authorization/confirmation/conflict gate |
+| `state/memory-update-policy` | Personal memory — user-statement grounding |
+| `state/fact-write-policy` | Knowledge base — source grounding before storage |
+| `integration/audit-writer-example` | FileAuditWriter — JSONL audit log (Law 3) |
+| `integration/downgrade-retry-example` | retryOnDecisions — retry loop on downgrade |
+| `integration/adapter-examples` | ContextAdapter for Claude, OpenAI, Gemini |
 
 ## The boundary principle
 
