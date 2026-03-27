@@ -1,12 +1,20 @@
 # jingu-trust-gate
 
-A deterministic admission layer between your LLM and your system. Every claim an LLM proposes is checked against evidence before it is allowed to affect state or trigger actions.
+Wukong can do anything. That is exactly the problem.
+
+Sun Wukong — the Monkey King — is the most capable being in the journey. He can defeat any enemy, see through any illusion, travel 108,000 li in a single somersault. But without Jingu, the golden headband, he acts on his own judgment. He does what he thinks is right. He cannot be trusted to stay on the path.
+
+Jingu does not limit his power. It ensures his power is used for what he was actually sent to do.
+
+Your LLM is Wukong.
 
 ```
 LLM output  →  gate.admit()  →  VerifiedContext  →  your system
 ```
 
-Not a guardrails framework. Not output validation. An evidence-grounded admission boundary — deterministic, zero LLM calls, fully audited.
+Capable of anything. Accountable for nothing — unless you put Jingu in the pipeline.
+
+jingu-trust-gate is a deterministic admission layer between your LLM and your system. Every proposal is checked against evidence before it is allowed to affect state or trigger actions. Not a guardrails framework. Not output validation. The spell that keeps the model on the path.
 
 ---
 
