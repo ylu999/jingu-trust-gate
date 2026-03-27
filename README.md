@@ -1,15 +1,22 @@
 # jingu-harness
 
+**jingu-harness is a trust boundary for LLM systems.**
+
+It inserts a deterministic, auditable gate between LLM output and your trusted context — so only evidence-backed, scope-safe, conflict-annotated claims reach your users.
+
 ## The problem
 
-LLMs produce confident answers. Not all of them are grounded in your evidence.
+LLMs do not distinguish between what is known and what is guessed. They generate confident answers either way.
 
-A typical RAG pipeline:
+In a RAG pipeline, this creates a critical failure mode:
+
 ```
 retrieve docs → LLM reads docs → LLM generates answer → user sees answer
 ```
 
-The last step has no constraint. The LLM can assert things your documents never said. It can state a precise quantity with full confidence and zero backing. It can silently pick one of two contradictory sources as "true". None of this is caught.
+At the last step there is no constraint. The LLM can assert facts not present in your data, over-specify beyond what evidence supports, or silently resolve conflicting sources. Once this happens, the incorrect answer becomes indistinguishable from a correct one — and there is no deterministic way to debug or reproduce the failure.
+
+This is not a prompt problem. This is a system boundary problem.
 
 **Without harness:**
 ```
@@ -26,8 +33,6 @@ LLM: "You have exactly 3 apples"     ← grade=proven, evidenceRefs=[]
 → never reaches user context
 → audit log records the rejection
 ```
-
-jingu-harness is a deterministic gate that sits between your LLM's proposed output and your trusted context. LLM proposes. harness decides what is allowed to be used.
 
 ## The mental model
 
