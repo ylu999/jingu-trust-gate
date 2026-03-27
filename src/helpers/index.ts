@@ -7,16 +7,20 @@
  *
  * Design constraints (see ARCHITECTURE.md):
  * - No domain semantics (no risk levels, no justification schemas, no grade rules)
- * - No approve/downgrade/reject logic
  * - No required fields or mandatory schemas
  * - Thin functions only, no base classes or mixins
  *
- * Import from submodule for tree-shaking:
- *   import { hasSupportType } from "jingu-trust-gate/helpers/support"
- *
- * Or import everything:
- *   import { hasSupportType, hintsFeedback, emptyProposalErrors } from "jingu-trust-gate/helpers"
+ * Modules:
+ *   outcomes — approve(), reject(), downgrade() outcome builders
+ *   rules    — firstFailing() combinator for evaluateUnit()
+ *   support  — sourceType and attributes queries on SupportRef arrays
+ *   structure — common validateStructure checks
+ *   feedback — hintsFeedback() for buildRetryFeedback()
  */
+
+export { approve, reject, downgrade } from "./outcomes.js";
+
+export { firstFailing } from "./rules.js";
 
 export {
   hasSupportType,
