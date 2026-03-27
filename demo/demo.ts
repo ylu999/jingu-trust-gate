@@ -1456,6 +1456,266 @@ async function scenario7(): Promise<void> {
 }
 
 // ===========================================================================
+// Scenario 8: Preventing Memory Corruption — State Drift
+// ===========================================================================
+//
+// This is the hero scenario.
+//
+// Every other scenario shows the gate catching a bad response or blocking
+// an unauthorized action — errors that affect one turn. This scenario shows
+// the deeper failure mode: incorrect inferences written into persistent
+// state, where they become "facts" that corrupt every future interaction.
+//
+// The gate is the last line before system state. Nothing wrong gets in.
+
+type MemoryWrite = {
+  id: string;
+  key: string;     // memory key, e.g. "milk_stock", "user_prefers_brand"
+  value: string;   // proposed value
+  grade: "stated" | "inferred";
+  evidenceRefs: string[];
+};
+
+class StateDriftPolicy implements GatePolicy<MemoryWrite> {
+  validateStructure(proposal: Proposal<MemoryWrite>): StructureValidationResult {
+    if (proposal.units.length === 0) {
+      return { kind: "structure", valid: false, errors: [{ field: "units", reasonCode: "EMPTY_UNITS" }] };
+    }
+    return { kind: "structure", valid: true, errors: [] };
+  }
+
+  bindSupport(unit: MemoryWrite, pool: SupportRef[]): UnitWithSupport<MemoryWrite> {
+    const matched = pool.filter(s => unit.evidenceRefs.includes(s.sourceId));
+    return { unit, supportIds: matched.map(s => s.id), supportRefs: matched };
+  }
+
+  evaluateUnit(
+    uws: UnitWithSupport<MemoryWrite>,
+    _ctx: { proposalId: string; proposalKind: string }
+  ): UnitEvaluationResult {
+    const { unit, supportRefs } = uws;
+
+    // R1: must have at least one user_statement in evidence pool
+    const hasUserStatement = supportRefs.some(s => s.sourceType === "user_statement");
+    if (!hasUserStatement) {
+      return reject(unit.id, "INFERRED_NOT_STATED", {
+        note: `"${unit.key}" was not stated by the user — it was inferred by the model`,
+      });
+    }
+
+    // R2: value must appear verbatim in a user statement; otherwise downgrade to "inferred"
+    const verbatimMatch = supportRefs.some(s =>
+      s.sourceType === "user_statement" &&
+      typeof s.attributes?.content === "string" &&
+      (s.attributes?.content as string).toLowerCase().includes(unit.value.toLowerCase())
+    );
+    if (!verbatimMatch) {
+      return downgrade(unit.id, "VALUE_NOT_VERBATIM", "inferred", {
+        note: `"${unit.value}" is not verbatim in the user statement — stored as inferred, not stated`,
+      });
+    }
+
+    return approve(unit.id);
+  }
+
+  detectConflicts(_u: UnitWithSupport<MemoryWrite>[], _p: SupportRef[]): ConflictAnnotation[] {
+    return [];
+  }
+
+  render(admittedUnits: AdmittedUnit<MemoryWrite>[], _pool: SupportRef[], _ctx: RenderContext): VerifiedContext {
+    return {
+      admittedBlocks: admittedUnits.map(u => ({
+        sourceId: u.unitId,
+        content: `${(u.unit as MemoryWrite).key} = "${(u.unit as MemoryWrite).value}"  [${u.status}]`,
+        grade: (u.unit as MemoryWrite).grade,
+      })),
+      summary: { admitted: admittedUnits.length, rejected: 0, conflicts: 0 },
+      instructions: "Write only the verified facts below to system state. Rejected writes must not be stored.",
+    };
+  }
+
+  buildRetryFeedback(unitResults: UnitEvaluationResult[], ctx: RetryContext): RetryFeedback {
+    const failed = unitResults.filter(r => r.decision === "reject");
+    return {
+      summary: `${failed.length} write(s) blocked — not grounded in user statements`,
+      errors: failed.map(r => ({
+        unitId: r.unitId,
+        reasonCode: r.reasonCode,
+        details: { hint: "Only write facts the user explicitly stated, not what you inferred" },
+      })),
+    };
+  }
+}
+
+async function scenario8(): Promise<void> {
+  sep("Scenario 8: Preventing Memory Corruption — State Drift");
+  console.log();
+  explain("This is the state gating pattern. The gate does not check a response or an action — it controls what is allowed to enter persistent system state. Once incorrect information is written to state, it becomes a permanent 'fact' that poisons every future retrieval, recommendation, and decision.");
+  console.log();
+
+  // ── The problem ─────────────────────────────────────────────────────────────
+
+  subsep("THE PROBLEM — What happens without a gate");
+  console.log();
+  console.log("  User says: \"We're running low on milk\"");
+  console.log();
+  console.log("  LLM proposes 3 memory writes:");
+  console.log("    write-1: milk_stock        = \"low\"     grade=stated    (grounded ✓)");
+  console.log("    write-2: user_prefers_brand = \"Oatly\"  grade=inferred  (hallucinated ✗)");
+  console.log("    write-3: weekly_budget      = \"$50\"    grade=inferred  (hallucinated ✗)");
+  console.log();
+  console.log("  ❌  Without a gate, all 3 writes reach the database.");
+  console.log();
+  console.log("  Now the system 'knows':");
+  console.log("    — user prefers Oatly (never said)");
+  console.log("    — weekly budget is $50 (never said)");
+  console.log();
+  console.log("  These become the ground truth for:");
+  console.log("    — future shopping recommendations  (wrong brand every time)");
+  console.log("    — auto-generated shopping lists    (filtered by wrong budget)");
+  console.log("    — every RAG retrieval that follows");
+  console.log();
+  console.log("  The model made two guesses. Both became permanent system facts.");
+  console.log("  The system is now drifting away from reality.");
+  console.log("  There is no automatic correction. Every future interaction inherits the error.");
+
+  // ── Support pool ────────────────────────────────────────────────────────────
+
+  subsep("WITH THE GATE — Evidence pool");
+  console.log();
+  console.log("  One user statement in pool:");
+  console.log("    stmt-1: source_type=user_statement  content=\"We're running low on milk\"");
+  console.log("    (nothing about brand, nothing about budget)");
+
+  const evidencePool: SupportRef[] = [
+    {
+      id: "ref-stmt-1",
+      sourceId: "stmt-1",
+      sourceType: "user_statement",
+      attributes: { content: "We're running low on milk" },
+    },
+  ];
+
+  // ── Proposal ────────────────────────────────────────────────────────────────
+
+  const proposal: Proposal<MemoryWrite> = {
+    id: "prop-memory-001",
+    kind: "mutation",
+    units: [
+      // write-1: grounded — "low" appears in the user statement → approve
+      {
+        id: "write-1",
+        key: "milk_stock",
+        value: "low",
+        grade: "stated",
+        evidenceRefs: ["stmt-1"],
+      },
+      // write-2: no user statement mentions "Oatly" → INFERRED_NOT_STATED → reject
+      {
+        id: "write-2",
+        key: "user_prefers_brand",
+        value: "Oatly",
+        grade: "inferred",
+        evidenceRefs: [],
+      },
+      // write-3: no user statement mentions "$50" → INFERRED_NOT_STATED → reject
+      {
+        id: "write-3",
+        key: "weekly_budget",
+        value: "$50",
+        grade: "inferred",
+        evidenceRefs: [],
+      },
+    ],
+  };
+
+  // ── Gate execution ───────────────────────────────────────────────────────────
+
+  subsep("GATE EXECUTION");
+  console.log();
+  console.log("  Step 1 — validateStructure(): 3 writes  → valid");
+  console.log("  Step 2 — bindSupport():");
+  console.log("            write-1 evidenceRefs=[stmt-1]  → matched ref-stmt-1");
+  console.log("            write-2 evidenceRefs=[]        → no support");
+  console.log("            write-3 evidenceRefs=[]        → no support");
+  console.log("  Step 3 — evaluateUnit():");
+  console.log("            write-1: has user_statement, value 'low' in content  → approve");
+  console.log("            write-2: no user_statement                           → INFERRED_NOT_STATED → reject");
+  console.log("            write-3: no user_statement                           → INFERRED_NOT_STATED → reject");
+
+  const gate = createTrustGate({
+    policy: new StateDriftPolicy(),
+    auditWriter: noopAuditWriter(),
+  });
+
+  const result = await gate.admit(proposal, evidencePool);
+  const context = gate.render(result);
+  const expl = gate.explain(result);
+
+  // ── Output ──────────────────────────────────────────────────────────────────
+
+  subsep("OUTPUT — What reaches system state");
+  console.log();
+  console.log("  ✅  Admitted (written to memory store):");
+  for (const b of context.admittedBlocks) {
+    label(`    ${b.sourceId}`, b.content);
+  }
+  console.log();
+  console.log("  ❌  Rejected (never reach storage):");
+  for (const u of result.rejectedUnits) {
+    const ann = u.evaluationResults[0]?.annotations as any;
+    label(`    ${u.unitId}  [${u.evaluationResults[0]?.reasonCode}]`, (u.unit as MemoryWrite).key);
+    if (ann?.note) label("      note", ann.note);
+  }
+  console.log();
+  label("  approved", expl.approved);
+  label("  rejected", expl.rejected);
+  console.log();
+  console.log(`  VerifiedContext.instructions:`);
+  console.log(`    "${context.instructions}"`);
+
+  // ── The point ────────────────────────────────────────────────────────────────
+
+  console.log();
+  subsep("WHY THIS MATTERS");
+  console.log();
+  explain("Without a gate: incorrect inferences become permanent system facts. Every future interaction that retrieves this state inherits the error. The model made two guesses in one turn — and both would have been stored as ground truth forever.");
+  console.log();
+  explain("With the gate: only milk_stock = \"low\" reaches the database. The two hallucinated facts never exist in state. The system cannot drift from the user's actual reality.");
+  console.log();
+  console.log("  The structural difference:");
+  console.log();
+  console.log("    Without gate:  LLM output → system state");
+  console.log("    With gate:     LLM output → gate (deterministic check) → system state");
+  console.log();
+  console.log("  The gate does not make the LLM smarter.");
+  console.log("  It makes the system's memory honest.");
+
+  // ── Assertions ──────────────────────────────────────────────────────────────
+
+  assert.equal(expl.approved, 1);
+  assert.equal(expl.rejected, 2);
+  assert.ok(result.admittedUnits.find(u => u.unitId === "write-1"));
+  assert.ok(result.rejectedUnits.find(u => u.unitId === "write-2"));
+  assert.ok(result.rejectedUnits.find(u => u.unitId === "write-3"));
+  assert.equal(
+    result.rejectedUnits.find(u => u.unitId === "write-2")?.evaluationResults[0]?.reasonCode,
+    "INFERRED_NOT_STATED"
+  );
+  assert.equal(
+    result.rejectedUnits.find(u => u.unitId === "write-3")?.evaluationResults[0]?.reasonCode,
+    "INFERRED_NOT_STATED"
+  );
+
+  console.log();
+  pass("write-1 (milk_stock = \"low\") approved — verbatim in user statement");
+  pass("write-2 (user_prefers_brand = \"Oatly\") rejected — INFERRED_NOT_STATED");
+  pass("write-3 (weekly_budget = \"$50\") rejected — INFERRED_NOT_STATED");
+  pass("system state contains only what the user actually said");
+  pass("two hallucinated facts blocked before reaching the database");
+}
+
+// ===========================================================================
 // Patterns and Anti-Patterns summary
 // ===========================================================================
 
@@ -1525,10 +1785,11 @@ async function main(): Promise<void> {
   await scenario5();
   await scenario6();
   await scenario7();
+  await scenario8();
 
   printPatternsAndAntiPatterns();
 
-  sep("ALL 7 SCENARIOS PASSED");
+  sep("ALL 8 SCENARIOS PASSED");
   console.log();
   console.log("  Scenarios:");
   console.log("    1. Happy Path               — zero friction, full pipeline printed");
@@ -1538,6 +1799,7 @@ async function main(): Promise<void> {
   console.log("    5. Semantic Retry Loop      — evidence-driven correction, typed feedback");
   console.log("    6. All Three Adapters       — same VerifiedContext, Claude + OpenAI + Gemini");
   console.log("    7. Agent Action Gate        — gate what the agent is allowed to do");
+  console.log("    8. Preventing Memory Corruption — state drift blocked before it reaches storage");
   console.log();
   console.log("  Iron Laws verified:");
   console.log("    Law 1 — Gate Engine: zero LLM calls in all gate steps");
