@@ -316,6 +316,12 @@ function printIronLaws(): void {
   console.log();
   explain("IMPORTANT: harness does not write 'You have milk in the fridge' for users.");
   explain("It produces search_result blocks / tool messages / content parts that the LLM uses to generate the final response. This is the correct separation of concerns.");
+  console.log();
+  console.log("  WHEN TO USE harness:");
+  console.log();
+  explain("USE when: you have a retrieval system (RAG, vector DB, knowledge base) and LLM output must be grounded in it. Use when you need to prevent hallucinated certainty. Use when you run multi-LLM pipelines. Use when you need audit trails.");
+  console.log();
+  explain("DO NOT USE when: your task is purely creative (writing, brainstorming) with no support pool. Do not use when you need sub-100ms latency. Do not use if you expect harness to rewrite or fix LLM output — it labels problems, it does not solve them.");
 }
 
 // ===========================================================================
@@ -500,6 +506,8 @@ async function scenario2(): Promise<void> {
   explain("The claim is not admitted. It will not reach the LLM context. The LLM will not generate a response based on hallucinated certainty.");
   console.log();
   explain("WHY THIS MATTERS: If this claim were passed through, the LLM would tell the user 'You have exactly 3 apples' with high confidence. The user would act on false information. harness prevents this at the boundary.");
+  console.log();
+  explain("LIMITATION: harness cannot tell why supportIds is empty. 'LLM cited wrong evidence refs' and 'the evidence simply does not exist in your system' both look identical — MISSING_EVIDENCE. If your support pool has no observations about apples, retry will not fix this. Build your retrieval system first, then use harness to enforce that claims stay within what was retrieved.");
 
   assert.equal(result.admittedUnits.length, 0);
   assert.equal(result.rejectedUnits.length, 1);
@@ -874,6 +882,8 @@ async function scenario5(): Promise<void> {
   label("final unit text", result.admittedUnits[0]?.unit.text);
   console.log();
   explain("KEY POINT: The fix was supplying evidence, not softening language. If the LLM had just changed grade from 'proven' to 'derived' without supplying evidence, the retry would have failed again (MISSING_EVIDENCE only triggers on grade=proven, so that softening would have passed — but with wrong semantics). The correct fix is always: ground the claim.");
+  console.log();
+  explain("LIMITATION: retry is locally effective, not globally convergent. It works when the LLM cited wrong evidence refs. It does NOT work when the support pool itself is missing the data — harness cannot distinguish between these two cases. The support pool is fixed for the entire retry loop. If the evidence was never retrieved, no number of retries will fix it.");
 
   assert.equal(result.retryAttempts, 2);
   assert.equal(result.admittedUnits.length, 1);
@@ -1096,6 +1106,20 @@ function printPatternsAndAntiPatterns(): void {
   console.log();
   console.log("  Anti-pattern 5: Bypassing the gate");
   explain("Passing LLM output directly as trusted context without running harness.admit(). This defeats the entire system. Every Proposal must flow through the gate before reaching the LLM context.");
+  console.log();
+  console.log("  KNOWN LIMITATIONS:");
+  console.log();
+  console.log("  Limitation 1: harness is a judge, not an editor");
+  explain("It flags problems and annotates precision boundaries. It does not rewrite claims, fill in missing evidence, or auto-resolve conflicts. Downstream LLM receives the annotations and decides how to express them.");
+  console.log();
+  console.log("  Limitation 2: support pool is fixed per admission");
+  explain("Retry works when the LLM cited wrong evidence refs. It does not work when the evidence simply does not exist in your system. harness cannot distinguish between these two cases — MISSING_EVIDENCE looks identical in both.");
+  console.log();
+  console.log("  Limitation 3: no cross-session state");
+  explain("harness is stateless per call. It does not remember previous admissions or detect patterns across sessions. Cross-session governance must be implemented outside harness.");
+  console.log();
+  console.log("  Limitation 4: no domain constraint on TUnit");
+  explain("harness does not enforce that TUnit has an id field. If your policy's evaluateUnit returns a mismatched unitId, the audit log will have orphan entries. Your policy is responsible for ID consistency.");
 }
 
 // ===========================================================================
@@ -1128,6 +1152,16 @@ async function main(): Promise<void> {
   console.log("    Law 1 — Gate Engine: zero LLM calls in all gate steps");
   console.log("    Law 2 — Policy is injected: MemoryPolicy carries all domain semantics");
   console.log("    Law 3 — Audit log: every admit() writes an AuditEntry");
+  console.log();
+  console.log("  Best for:");
+  console.log("    — RAG pipelines where LLM output must be grounded in retrieved evidence");
+  console.log("    — Multi-LLM systems needing a trusted handoff point between models");
+  console.log("    — Any domain requiring audit trails and explainable admission decisions");
+  console.log();
+  console.log("  Not for:");
+  console.log("    — Pure creative tasks (no support pool = harness has nothing to verify against)");
+  console.log("    — Sub-100ms latency requirements");
+  console.log("    — Systems that expect harness to rewrite or auto-fix LLM output");
   console.log();
 }
 
