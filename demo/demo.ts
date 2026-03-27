@@ -754,8 +754,8 @@ async function scenario4(): Promise<void> {
   pass("hasConflicts === true");
   pass("both units in admittedUnits (not rejected)");
   pass("both status === 'approved_with_conflict'");
-  pass("conflictAnnotation.conflictCode === 'ITEM_CONFLICT'");
-  pass("conflictAnnotation.severity === 'informational'");
+  pass("conflictAnnotations[0].conflictCode === 'ITEM_CONFLICT'");
+  pass("conflictAnnotations[0].severity === 'informational'");
   pass("VerifiedContext: both blocks have conflictNote");
 }
 

@@ -53,10 +53,10 @@ const policy: HarnessPolicy<Item> = {
       ? [{ field: "units", reasonCode: "EMPTY_PROPOSAL" }]
       : [],
   }),
-  bindSupport: (unit, pool) => ({
-    unit,
-    supportIds: pool.filter(s => s.sourceId === unit.id).map(s => s.id),
-  }),
+  bindSupport: (unit, pool) => {
+    const matched = pool.filter(s => s.sourceId === unit.id);
+    return { unit, supportIds: matched.map(s => s.id), supportRefs: matched };
+  },
   evaluateUnit: ({ unit, supportIds }) => ({
     kind: "unit",
     unitId: unit.id,
@@ -97,7 +97,7 @@ Implement all six methods. None may call an LLM.
 | `validateStructure` | `Proposal<TUnit>` | `StructureValidationResult` | yes |
 | `bindSupport` | `unit + SupportRef[]` | `UnitWithSupport<TUnit>` | yes |
 | `evaluateUnit` | `UnitWithSupport<TUnit>` | `UnitEvaluationResult` | yes |
-| `detectConflicts` | `units + SupportRef[]` | `ConflictAnnotation[]` | yes |
+| `detectConflicts` | `UnitWithSupport<TUnit>[] + SupportRef[]` | `ConflictAnnotation[]` | yes |
 | `render` | `AdmittedUnit<TUnit>[] + SupportRef[]` | `VerifiedContext` | yes |
 | `buildRetryFeedback` | `UnitEvaluationResult[]` | `RetryFeedback` | yes |
 
@@ -154,6 +154,6 @@ src/harness.ts   — createHarness() public API
 
 ```bash
 npm install
-npm test     # 70 tests
+npm test     # 72 tests
 npm run demo # narrative demo with 6 scenarios
 ```
