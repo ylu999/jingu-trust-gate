@@ -1,6 +1,6 @@
 {
   "name": "jingu-trust-gate",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A deterministic trust gate for LLM systems",
   "type": "module",
   "main": "dist/src/index.js",
