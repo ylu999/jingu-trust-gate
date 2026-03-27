@@ -1,5 +1,21 @@
 # Architecture
 
+## Mental model
+
+```
+AI  →  propose
+           ↓
+        verify
+           ↓
+    accept / reject
+```
+
+LLMs are proposal generators. They produce confident output whether or not it is correct. This repo is the layer that decides which proposals are allowed to become system state.
+
+The core rule: **nothing is accepted unless it can be proven against evidence.**
+
+This applies to any LLM output: a RAG claim, an agent step, a tool call, an irreversible action. The domain changes; the admission model does not.
+
 ## What this repo is
 
 A **generic admission engine** for LLM proposals.

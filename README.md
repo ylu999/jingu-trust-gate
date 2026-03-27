@@ -1,8 +1,18 @@
 # jingu-trust-gate
 
-**LLM output is untrusted input. jingu-trust-gate decides what is allowed to become trusted system state.**
+**AI can propose anything. Only verified results are accepted.**
 
-It inserts a deterministic, auditable gate between LLM output and your trusted context. Only claims that are provably supported by evidence are allowed through. Everything else is rejected, downgraded, or annotated — and every decision is written to an audit log.
+```
+AI  →  propose
+           ↓
+        verify
+           ↓
+    accept / reject
+```
+
+LLMs are proposal generators, not sources of truth. They produce confident output whether or not it is correct. jingu-trust-gate is the layer that decides which proposals are allowed to become system state — by checking each one against evidence before it is admitted.
+
+Nothing passes through unless it can be proven. Every decision is audited.
 
 ## Install
 
@@ -17,15 +27,18 @@ pip install jingu-trust-gate
 
 ## The problem
 
-LLMs do not distinguish between what is known and what is guessed. They generate confident answers either way.
+LLMs do not distinguish between what is known and what is guessed. They generate confident output either way.
 
-In a RAG pipeline, this creates a critical failure mode:
+This creates the same failure mode across every LLM use case:
 
-```
-retrieve docs → LLM reads docs → LLM generates answer → user sees answer
-```
+| Use case | What the LLM proposes | What can go wrong |
+|---|---|---|
+| RAG / Q&A | Claims about retrieved data | Asserts facts not in your evidence |
+| Agent planning | Next steps to execute | Proposes steps that lack required context |
+| Tool calls | Function calls to make | Calls tools redundantly or without user intent |
+| Action execution | Irreversible actions | Acts without authorization or confirmation |
 
-At the last step there is no constraint. The LLM can assert facts not present in your data, over-specify beyond what evidence supports, or silently resolve conflicting sources. Once this happens, the incorrect answer becomes indistinguishable from a correct one — and there is no deterministic way to debug or reproduce the failure.
+In each case, the LLM output flows directly into system state with no deterministic check. Once an incorrect output is accepted, it is indistinguishable from a correct one — and there is no reproducible way to audit or debug the failure.
 
 This is not a prompt problem. This is a system boundary problem.
 
@@ -47,17 +60,17 @@ LLM: "You have exactly 3 apples"     ← grade=proven, evidenceRefs=[]
 
 ## This is not a guardrails framework
 
-Guardrails frameworks (NeMo Guardrails, Guardrails AI) check whether LLM output is **safe or well-formed**. They block toxic content, enforce schemas, detect PII. That is a different problem.
+Guardrails frameworks check whether output is **safe or well-formed** — they block toxic content, enforce schemas, detect PII. That is a different problem.
 
-jingu-trust-gate checks whether each **claim is actually supported by your evidence**. It does not care whether output is polite or syntactically valid. It cares whether what the LLM asserts can be proven from the data you have.
+jingu-trust-gate checks whether each **proposal is actually supported by evidence**. It does not care whether output is polite or syntactically valid. It cares whether what the LLM proposes can be proven correct before it becomes system state.
 
-| System | What it checks | Mechanism | Grain |
-|--------|---------------|-----------|-------|
-| Guardrails AI | Is the output safe / valid? | validators, LLM critics | response-level |
-| NeMo Guardrails | Does the bot stay on-topic? | policy rules | turn-level |
-| RAG / grounding | Did retrieval find relevant docs? | vector similarity | document-level |
-| DeepEval | How often does the model hallucinate? | offline scoring | benchmark-level |
-| **jingu-trust-gate** | **Is each claim supported by your evidence?** | **deterministic gate, zero LLM** | **claim-level** |
+| System | Question it answers | When it runs |
+|--------|---|---|
+| Guardrails AI | Is the output safe? | after generation |
+| NeMo Guardrails | Is the bot on-topic? | at conversation level |
+| RAG / grounding | Did retrieval find relevant docs? | before generation |
+| DeepEval | How often does the model hallucinate? | offline, in eval |
+| **jingu-trust-gate** | **Is this proposal allowed to become state?** | **at every admission, deterministically** |
 
 To our knowledge, existing systems validate outputs, evaluate models, or retrieve evidence — but do not provide a deterministic admission boundary that enforces what claims are allowed to be treated as true at runtime.
 
